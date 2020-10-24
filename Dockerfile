@@ -8,7 +8,7 @@ WORKDIR /src
 COPY ./src /src
 
 COPY ./requirements.txt /requirements.txt
-RUN apk add --update --no-cache --virtual .tmp-build-deps \
+RUN apk add --update --virtual .tmp-build-deps \
         gcc libc-dev linux-headers
 RUN pip install -r /requirements.txt
 
