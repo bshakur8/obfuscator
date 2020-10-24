@@ -3,6 +3,8 @@ import shutil
 import unittest
 
 from src import utils
+from pathlib import Path
+base_dir = f"{str(Path(__file__).parent.parent)}"
 
 
 class TestUtils(unittest.TestCase):
@@ -10,10 +12,10 @@ class TestUtils(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.test_logs_dir = "logs_dir"
-        self.a1_folder = "logs_dir/a1"
-        self.b_folder = "logs_dir/a1/b"
-        self.a2_folder = "logs_dir/a2"
+        self.test_logs_dir = os.path.join(base_dir, 'logs_dir')
+        self.a1_folder = f"{self.test_logs_dir}/a1"
+        self.b_folder = f"{self.a1_folder}/b"
+        self.a2_folder = f"{self.test_logs_dir}/a2"
 
     def test__get_size(self):
         x = utils.get_size(self.get_single_text_file())

@@ -393,10 +393,10 @@ class PathType:
         if path:
             if self.verify_exist:
                 os.makedirs(path, exist_ok=True)
-
-            if os.path.isdir(path) or os.path.isfile(path):
+                if os.path.isdir(path) or os.path.isfile(path):
+                    return path
+            else:
                 return path
-
         raise argparse.ArgumentTypeError(f"path is not found: {path}")
 
 

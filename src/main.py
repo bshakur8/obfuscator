@@ -49,7 +49,7 @@ class ObfuscateManager:
         return self._strategy()
 
 
-def get_args_parser():
+def get_args_parser(test=False):
     thread_pool_choices = WorkersPool.choices()
     default_pool = WorkersPool.get_default_pool_class().__name__
 
@@ -70,7 +70,7 @@ def get_args_parser():
                         help="Minimum file size to split, in bytes")
     parser.add_argument("-rm", "--remove-original", dest="remove_original", action="store_true", required=False,
                         help="Remove original file after obfuscation")
-    parser.add_argument("-log", "--log-folder", dest="log_folder", type=utils.PathType(verify_exist=True), required=False,
+    parser.add_argument("-log", "--log-folder", dest="log_folder", type=utils.PathType(verify_exist=not test), required=False,
                         help="Log file folder")
     parser.add_argument("--ignore-hint", dest="ignore_hint", type=str, required=False,
                         help="Ignore file hint regex: Checks first line")
