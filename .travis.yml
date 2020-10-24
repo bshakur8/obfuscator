@@ -7,4 +7,4 @@ services:
 before_script: pip install docker-compose
 
 script:
-  - docker-compose run app sh -c
+  - docker-compose run src sh -c "python -m unittest /home/bhaa/github/obfuscator/tests"

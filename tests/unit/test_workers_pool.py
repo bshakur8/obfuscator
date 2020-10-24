@@ -26,9 +26,9 @@ class TestWorkersPool(unittest.TestCase):
         expected_result = [32, 243, 1024, 3125]
         with WorkersPool.multiprocess(workers) as pool1, \
                 WorkersPool.thread_pool_executor(workers) as pool2, \
-                WorkersPool.thread_pool(workers) as pool3, \
-                WorkersPool.greenlets(workers) as pool4:
+                WorkersPool.thread_pool(workers) as pool3:
+                # WorkersPool.greenlets(workers) as pool4:
 
-            for index, pool in enumerate((pool1, pool2, pool3, pool4), 1):
+            for index, pool in enumerate((pool1, pool2, pool3), 1):
                 utils.logger.info(f"Pool #{index}")
                 self.assertEqual(run_me(pool1, range(2, 6)), expected_result)

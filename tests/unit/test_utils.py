@@ -21,7 +21,7 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(len(x), 2)
         self.assertEqual(type(x[0]), int)
         self.assertEqual(type(x[1]), str)
-        self.assertEqual(x, (78, "78 bytes"))
+        self.assertEqual(x, (78, "78.00 bytes"))
 
     def test__get_lines_number(self):
         x = utils.get_lines_number(self.get_single_text_file())
