@@ -7,7 +7,7 @@ services:
 before_script: pip install docker-compose
 
 script:
-  - docker-compose run src sh -c "python -m unittest discover /app/tests"
+  - docker-compose run src sh -c "python -m unittest discover /app/tests && flake8"
 
 notifications:
   email: false

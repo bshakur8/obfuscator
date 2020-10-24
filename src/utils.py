@@ -301,7 +301,7 @@ def split_file(path: str, num_parts: int, output_folder) -> List[str]:
     part_abs_path = clone_file(filename=path, target_dir=output_folder, suffix=PART_SUFFIX)
 
     cmd = f"split -d -l {num_lines_per_file} {path} {part_abs_path}"
-    _ = run_local_cmd(cmd=cmd)
+    run_local_cmd(cmd=cmd)
 
     part_name = f"{os.path.basename(path)}{PART_SUFFIX}"
     files = [os.path.join(root, f) for root, dirs, files in os.walk(output_folder) for f in files

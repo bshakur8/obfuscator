@@ -10,7 +10,7 @@ from .strategy.workers_pool import WorkersPool
 IN_PLACE = "in_place"
 SAM = "split_merge"  # split and merge
 
-SIZE_TO_SPLIT_IN_BYTES = 2*1024*1024  # in bytes - 2 MB
+SIZE_TO_SPLIT_IN_BYTES = 2 * 1024 * 1024  # in bytes - 2 MB
 
 
 class ObfuscateManager:

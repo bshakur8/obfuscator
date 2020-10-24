@@ -51,4 +51,3 @@ class ObfuscateInplace(FileSplitters):
                     lines = []
 
             sys.stdout.writelines(lines)
-

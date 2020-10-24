@@ -37,14 +37,16 @@ class AbsObfuscatorFilth(RegexFilth):
 
 class PortFilth(AbsObfuscatorFilth):
     type = 'port'
-    regex = re.compile("(port\s*[#=:>-]\s*\d+)", re.IGNORECASE | re.MULTILINE)
+    regex = re.compile(r"(port\s*[#=:>-]\s*\d+)", re.IGNORECASE | re.MULTILINE)
 
 
 class IPv4Filth(AbsObfuscatorFilth):
     type = 'ip:port'
     # valid: IP:port, IP/subnet
     # 555.11.516.9910101 is not a valid IP
-    regex = re.compile(r"""\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b([:\\]\s*\d+)?""", re.IGNORECASE | re.MULTILINE)
+    regex = re.compile(
+        r"""\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b([:\\]\s*\d+)?""",
+        re.IGNORECASE | re.MULTILINE)
 
 
 class FilesDirFilth(AbsObfuscatorFilth):
