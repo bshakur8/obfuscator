@@ -12,7 +12,7 @@ COPY ./src /app/src
 COPY ./tests /app/tests
 WORKDIR /src
 
-COPY ./requirements.txt /requirements.txt
+COPY ./requirements.txt /app/requirements.txt
 RUN apk add --update --no-cache --virtual .tmp-build-deps \
         gcc libc-dev linux-headers
 RUN pip install -r /app/requirements.txt
