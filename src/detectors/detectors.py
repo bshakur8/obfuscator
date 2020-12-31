@@ -1,3 +1,4 @@
+import hashlib
 import re
 from functools import lru_cache
 
@@ -7,8 +8,12 @@ from scrubadub.filth import RegexFilth
 
 class _ObfDetectorsIterator:
     def __iter__(self):
-        for d in PortDetector, IPv4Detector, FilesDirDetector, MACDetector, MyCredentialDetector:
+        for d in IPv4Detector, FilesDirDetector, MACDetector, MyCredentialDetector:
             yield d
+
+    @property
+    def first(self):
+        return IPv4Detector
 
 
 ObfuscatorDetectors = _ObfDetectorsIterator()
@@ -17,19 +22,24 @@ ObfuscatorDetectors = _ObfDetectorsIterator()
 class AbsObfuscatorFilth(RegexFilth):
     salt = None
 
+    @staticmethod
+    def _hash_data(data):
+        # Constant hash between different servers
+        return hashlib.md5(str(data).encode()).hexdigest()
+
     @property
     @lru_cache(1)
     def _const_hash(self):
-        return hash("".join((str(x) for x in (self.type, self.salt))))
+        return self._hash_data("".join((str(x) for x in (self.type, self.salt))))
 
     @property
     def hash(self):
-        return hash("".join((str(x) for x in (self._const_hash, self.text.lower()))))
+        return self._hash_data(f"{self._const_hash}{self.text.lower()}")
 
     @property
     def identifier(self):
         i = self.lookup[self.hash]
-        return u'%s-%d' % (self.placeholder, i)
+        return u'%s-%s' % (self.placeholder, i)
 
     def replace_with(self, **kwargs):
         return self.prefix + self.identifier + self.suffix
@@ -51,7 +61,7 @@ class IPv4Filth(AbsObfuscatorFilth):
 
 class FilesDirFilth(AbsObfuscatorFilth):
     type = "file_dir"
-    regex = re.compile(r"\B/[^ \t\n]+\b", re.IGNORECASE | re.MULTILINE)
+    regex = re.compile(r"\B/[^ :\t\n]+\b", re.IGNORECASE | re.MULTILINE)
 
 
 class MACFilth(AbsObfuscatorFilth):
@@ -75,7 +85,7 @@ class MyCredentialFilth(AbsObfuscatorFilth):
         "admin_username", "admin_password", "admin_email", "support_username", "support_password"  # others
     ]
     keywords = "|".join(CREDENTIALS_KEYWORDS)
-    regex_str = fr"\b(({keywords})\s*\S+)"
+    regex_str = fr"\b(({keywords})( :|=|)+\S+)"
     regex = re.compile(regex_str, re.IGNORECASE | re.MULTILINE)
 
 
@@ -97,3 +107,21 @@ class MACDetector(RegexDetector):
 
 class FilesDirDetector(RegexDetector):
     filth_cls = FilesDirFilth
+
+
+class ObfuscatorLookup:
+    """The Lookup object is used to create an in-memory reference table to
+    create unique identifiers for ``Filth`` that is encountered.
+    Unlike scrubadub Lookup that takes that next index, Obfuscator lookup
+    takes the first # of the hashkey which is constant among all servers
+    """
+
+    def __init__(self, collection):
+        self.table = collection if collection is not None else {}
+
+    def __getitem__(self, key):
+        try:
+            return self.table[key]
+        except KeyError:
+            self.table[key] = key[:5]
+            return self.table[key]

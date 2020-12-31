@@ -6,10 +6,14 @@ try:
 except ImportError:
     ThreadPoolExecutor = None
 try:
-    from multiprocessing import Pool, cpu_count
+    from multiprocessing import Pool, cpu_count, Manager
+    # Shared lookup table between all processes
+    LOOKUP_TABLE = Manager().dict()
 except ImportError:
     Pool = None
     cpu_count = lambda: 1
+    Manager = None
+    LOOKUP_TABLE = None
 try:
     from multiprocessing.pool import ThreadPool
 except ImportError:
@@ -81,7 +85,7 @@ class _WorkersPool:
     @classmethod
     def multiprocess(cls, workers=None):
         assert Pool, "Please install multiprocessing"
-        return WorkersPool.Executor(Pool, workers or cpu_count())
+        return WorkersPool.Executor(Pool, workers or cpu_count(), lookup_table=LOOKUP_TABLE)
 
     @classmethod
     def greenlets(cls, workers=None):
@@ -89,9 +93,11 @@ class _WorkersPool:
         return WorkersPool.Executor(GreenThreadPool, workers)
 
     class Executor:
-        def __init__(self, threadpool, workers):
+        def __init__(self, threadpool, workers, lookup_table=None):
             self.workers = workers or DEFAULT_WORKERS
             self._pool = threadpool(self.workers)
+            # Use external lookup table
+            self.lookup_table = lookup_table
 
         def __str__(self):
             return str(self._pool)

@@ -102,13 +102,13 @@ class ObfuscateSplitAndMerge(FileSplitters):
         line_idx = 0
         try:
             with open(tmp_fd, 'w', buffering=self.BUFFER_SIZE) as writer,\
-                    open(src_file, 'r', buffering=self.BUFFER_SIZE, encoding="utf-8") as reader:
+                    open(src_file, 'r', buffering=self.BUFFER_SIZE, encoding="utf-8", errors="backslashreplace") as reader:
                 for line_idx, line in enumerate(reader):
                     # clean file and write to new_logs file
                     writer.write(self._scrubber.clean(text=line))
 
         except Exception as e:
-            utils.logger.error(f"Exception in obfuscate_sam._obfuscate_worker : {str(e)}")
+            utils.logger.exception(f"Exception in obfuscate_sam._obfuscate_worker")
             # remove failed temp file
             utils.remove_files([abs_tmp_path])
 

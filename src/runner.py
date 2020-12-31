@@ -64,9 +64,7 @@ def run_test(run_name, log_folder, args):
     try:
         utils.run_local_cmd(f"python main.py {args}")
     except Exception:
-        import traceback
-        utils.logger.error(f"Exception during to run Pool type: {run_name}")
-        utils.logger.error(traceback.format_exc())
+        utils.logger.exception(f"Exception during to run Pool type: {run_name}")
     finally:
         utils.logger.info("{0}END - {1}{0}".format('-' * 10, run_name))
 

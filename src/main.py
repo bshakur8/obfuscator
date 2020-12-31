@@ -2,10 +2,25 @@
 import argparse
 import sys
 
-from . import utils
-from .strategy.obfuscate_inplace import ObfuscateInplace
-from .strategy.obfuscate_sam import ObfuscateSplitAndMerge
-from .strategy.workers_pool import WorkersPool
+try:
+    from . import utils as utils
+except ImportError:
+    import src.utils as utils
+try:
+    from .strategy.obfuscate_inplace import ObfuscateInplace
+except ImportError:
+    from src.strategy.obfuscate_inplace import ObfuscateInplace
+
+try:
+    from .strategy.obfuscate_sam import ObfuscateSplitAndMerge
+except ImportError:
+    from src.strategy.obfuscate_sam import ObfuscateSplitAndMerge
+
+try:
+    from .strategy.workers_pool import WorkersPool
+except ImportError:
+    from src.strategy.workers_pool import WorkersPool
+
 
 IN_PLACE = "in_place"
 SAM = "split_merge"  # split and merge
@@ -70,8 +85,8 @@ def get_args_parser(test=False):
                         help="Minimum file size to split, in bytes")
     parser.add_argument("-rm", "--remove-original", dest="remove_original", action="store_true", required=False,
                         help="Remove original file after obfuscation")
-    parser.add_argument("-log", "--log-folder", dest="log_folder", type=utils.PathType(verify_exist=not test), required=False,
-                        help="Log file folder")
+    parser.add_argument("-log", "--log-folder", dest="log_folder", type=utils.PathType(verify_exist=not test),
+                        required=False, help="Log file folder")
     parser.add_argument("--ignore-hint", dest="ignore_hint", type=str, required=False,
                         help="Ignore file hint regex: Checks first line")
     parser.add_argument("-t", "--measure-time", dest="measure_time", default=False, action="store_true", required=False,

@@ -5,7 +5,7 @@ from enum import Enum
 
 from .workers_pool import WorkersPool
 from .. import utils
-from ..detectors.detectors import ObfuscatorDetectors
+from ..detectors.detectors import ObfuscatorDetectors, ObfuscatorLookup
 from ..detectors.scrubber import ObfuscatorScrubber
 from ..utils import NoTextFilesFound
 
@@ -61,10 +61,8 @@ class FileSplitters(metaclass=ABCMeta):
             rc = RCEnum.IGNORED
 
         except Exception:
-            utils.logger.error(f"FAILED")
+            utils.logger.exception(f"FAILED")
             rc = RCEnum.FAILURE
-            import traceback
-            utils.logger.error(traceback.format_exc())
         finally:
             self._post()
 
@@ -82,9 +80,13 @@ class FileSplitters(metaclass=ABCMeta):
     def set_default_scrubber(self):
         scrubber = ObfuscatorScrubber()
 
+        pool_lookup_table = self.pool_function().lookup_table
         for det in ObfuscatorDetectors:
-            utils.logger.debug(f"Add Detector: {det}")
             det.filth_cls.salt = self.args.salt
+            lookup_table = det.filth_cls.lookup.table
+            det.filth_cls.lookup = ObfuscatorLookup(collection=pool_lookup_table)
+            # Show memory address of lookup to verify that table is the same among all threads\processes
+            utils.logger.debug(f"Add Detector: {det}: {type(lookup_table)}, {hex(id(lookup_table))}")
             scrubber.add_detector(det)
 
         self.scrubber = scrubber
