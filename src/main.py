@@ -21,7 +21,6 @@ try:
 except ImportError:
     from src.strategy.workers_pool import WorkersPool
 
-
 IN_PLACE = "in_place"
 SAM = "split_merge"  # split and merge
 

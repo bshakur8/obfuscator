@@ -7,6 +7,7 @@ except ImportError:
     ThreadPoolExecutor = None
 try:
     from multiprocessing import Pool, cpu_count, Manager
+
     # Shared lookup table between all processes
     LOOKUP_TABLE = Manager().dict()
 except ImportError:

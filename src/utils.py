@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 import argparse
-import shutil
-from itertools import chain
+import logging
 import math
 import os
 import re
+import shutil
 import subprocess
 import time
 from collections import namedtuple
 from functools import wraps
+from itertools import chain
 from typing import List
-
-import logging
 
 LIST_UNITS = ["bytes", "KB", "MB", "GB", "GB+"]
 FILE_PREFIX = "___"
@@ -337,6 +336,7 @@ def measure_time(func):
         result = func(*args, **kwargs)
         logger.debug(f"'{func.__name__}' function took: {time.time() - t1} seconds")
         return result
+
     return wrapper
 
 
