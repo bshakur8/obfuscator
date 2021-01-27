@@ -43,12 +43,9 @@ def init_logger(args=None):
         if args.log_folder:
             logging.basicConfig(filename=os.path.join(args.log_folder, "obfuscation_log"), level=logging.DEBUG,
                                 format=log_format)
-        if args.verbose:
-            level = logging.DEBUG
-            msg = f"verbose mode is active"
-        else:
-            level = logging.INFO
-            msg = f"verbose mode is inactive"
+
+            level, mode = (logging.DEBUG, "active") if args.verbose else (logging.INFO, "inactive")
+            msg = f"verbose mode is {mode}"
 
     logger.setLevel(level)
     logger.debug(BUILTIN_IGNORE_HINT)
@@ -114,7 +111,7 @@ def remove_files(list_files):
         try:
             os.remove(f)
         except OSError:
-            pass
+            logger.warning(f"Failed to removed file: {f}")
 
 
 def create_folder(folder):
@@ -209,8 +206,9 @@ def get_extended_file(filename, size_limit, num_parts, output_folder):
         # Single worker: no need to split
         return [filename]
     else:
-        # File size is bigger than limit and workers > 1
-        return split_file(filename, num_parts, output_folder)
+        splits = split_file(filename, num_parts, output_folder)
+        remove_files([filename])  # remove original file to save disk space
+        return splits
 
 
 def get_extended_file_list(files, size_limit, num_parts, output_folder):
