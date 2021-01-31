@@ -7,7 +7,6 @@ except ImportError:
     ThreadPoolExecutor = None
 try:
     from multiprocessing import Pool, cpu_count, Manager
-
     # Shared lookup table between all processes
     LOOKUP_TABLE = Manager().dict()
 except ImportError:
@@ -86,7 +85,7 @@ class _WorkersPool:
     @classmethod
     def multiprocess(cls, workers=None):
         assert Pool, "Please install multiprocessing"
-        return WorkersPool.Executor(Pool, workers or cpu_count())
+        return WorkersPool.Executor(Pool, workers or cpu_count(), lookup_table=LOOKUP_TABLE)
 
     @classmethod
     def greenlets(cls, workers=None):

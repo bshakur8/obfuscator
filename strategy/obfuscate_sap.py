@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-import utils
 from strategy.abs_file_splitter import FileSplitters
 from strategy.obfuscate_sam import ObfuscateSplitAndMerge
+from strategy import utils
 
 
 class ObfuscateSplitInPlace(ObfuscateSplitAndMerge):
@@ -11,6 +11,7 @@ class ObfuscateSplitInPlace(ObfuscateSplitAndMerge):
 
     def pre(self):
         FileSplitters.pre(self)
+        self.raw_files = utils.clone_folder(raw_files=self.raw_files, args=self.args)
 
     def post(self):
         FileSplitters.post(self)
@@ -23,7 +24,7 @@ class ObfuscateSplitInPlace(ObfuscateSplitAndMerge):
         :param src_file: Filename to obfuscate
         """
         utils.logger.info(f"Obfuscate '{src_file}'")
-        return utils.obfuscate_in_place(src_file, scrubber=self._scrubber)
+        return utils.obfuscate_in_place(src_file, scrubber=self._scrubber, args=self.args)
 
     def _prepare_merge_files(self, obfuscated_files, **kwargs):
         src_file = kwargs.pop('src_file')

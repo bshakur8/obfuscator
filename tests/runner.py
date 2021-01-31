@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 import os
 
-from src.main import SAM, IN_PLACE
-from src.obfuscator.strategy.workers_pool import WorkersPool
-
-import utils
+from pysrc.obfuscator.obfuscator.strategy import utils
+from strategy.workers_pool import WorkersPool
+from main import SAM, IN_PLACE
 
 # infile = "/tmp/test_bundle_obf/files/f_2GB"
 infile = "/tmp/test_bundle_obf/files/f_86M"

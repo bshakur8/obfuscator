@@ -3,10 +3,10 @@ import os
 from abc import ABCMeta
 from enum import Enum
 
-import utils
+from strategy.workers_pool import WorkersPool
+from strategy import utils
 from detectors.detectors import ObfuscatorDetectors, ObfuscatorLookup
 from detectors.scrubber import ObfuscatorScrubber
-from strategy.workers_pool import WorkersPool
 
 
 class RCEnum(Enum):
@@ -58,9 +58,8 @@ class FileSplitters(metaclass=ABCMeta):
             rc = RCEnum.IGNORED
 
         except Exception:
-            utils.logger.error(f"FAILED")
+            utils.logger.exception(f"FAILED")
             rc = RCEnum.FAILURE
-            utils.logger.exception(f"Obfuscation failed")
         finally:
             self.post()
         return rc.value

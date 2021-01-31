@@ -2,26 +2,11 @@
 import argparse
 import sys
 
+from strategy import utils
+from strategy.obfuscate_inplace import ObfuscateInplace
+from strategy.obfuscate_sam import ObfuscateSplitAndMerge
 from strategy.obfuscate_sap import ObfuscateSplitInPlace
-
-try:
-    import utils
-except ImportError:
-    import src.utils as utils
-try:
-    from strategy.obfuscate_inplace import ObfuscateInplace
-except ImportError:
-    from src.strategy.obfuscate_inplace import ObfuscateInplace
-
-try:
-    from strategy.obfuscate_sam import ObfuscateSplitAndMerge
-except ImportError:
-    from src.strategy.obfuscate_sam import ObfuscateSplitAndMerge
-
-try:
-    from strategy.workers_pool import WorkersPool
-except ImportError:
-    from src.strategy.workers_pool import WorkersPool
+from strategy.workers_pool import WorkersPool
 
 
 IN_PLACE = "in_place"
@@ -32,8 +17,7 @@ OBFUSCATION_METHODS_FACTORY = {IN_PLACE: ObfuscateInplace,
                                SAM: ObfuscateSplitAndMerge,
                                SAP: ObfuscateSplitInPlace}
 
-
-SIZE_TO_SPLIT_IN_BYTES = 2 * 1024 * 1024  # in bytes - 2 MB
+SIZE_TO_SPLIT_IN_BYTES = 5 * 1024 * 1024  # in bytes - 5 MB
 
 
 class ObfuscateManager:
@@ -74,7 +58,7 @@ def get_args_parser(test=False):
     thread_pool_choices = WorkersPool.choices()
     default_pool = WorkersPool.get_default_pool_class().__name__
 
-    parser = argparse.ArgumentParser(description="Text files obfuscator")
+    parser = argparse.ArgumentParser(description="Text files src")
     parser.add_argument("-s", "--salt", dest="salt", type=str, required=False,
                         default="1234", help="Cluster salt number for a proper identification")
     parser.add_argument("-i", "--input", dest="input_folder", type=utils.PathType(), required=True,

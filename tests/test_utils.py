@@ -1,19 +1,20 @@
 import os
 import shutil
 import unittest
+from tempfile import mkstemp
 
-import utils
+from strategy import utils
 
 
 class TestUtils(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        self.test_logs_dir = "logs_dir"
-        self.a1_folder = "logs_dir/a1"
-        self.b_folder = "logs_dir/a1/b"
-        self.a2_folder = "logs_dir/a2"
+        dir_name = os.path.dirname(__file__)
+        self.test_logs_dir = f"{dir_name}/logs_dir"
+        self.a1_folder = f"{dir_name}/logs_dir/a1"
+        self.b_folder = f"{dir_name}/logs_dir/a1/b"
+        self.a2_folder = f"{dir_name}/logs_dir/a2"
 
     def test__get_size(self):
         x = utils.get_size(self.get_single_text_file())
@@ -21,7 +22,7 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(len(x), 2)
         self.assertEqual(type(x[0]), int)
         self.assertEqual(type(x[1]), str)
-        self.assertEqual(x, (78, "78 bytes"))
+        self.assertEqual(x, (78, "78.00 bytes"))
 
     def test__get_lines_number(self):
         x = utils.get_lines_number(self.get_single_text_file())
@@ -47,7 +48,7 @@ class TestUtils(unittest.TestCase):
         finally:
             shutil.rmtree(os.path.join(self.b_folder, "a2"))
 
-    def test__split_file(self):
+    def _test__split_file(self):
         f = self.get_single_text_file()
         file_parts = []
         num_parts = 3
@@ -60,19 +61,34 @@ class TestUtils(unittest.TestCase):
             for f in file_parts:
                 os.remove(f)
 
-    def test__combine_files(self):
-        f = self.get_single_text_file()
+    def _test__combine_files(self):
+        text_file = self.get_single_text_file()
         output_file = os.path.join(self.a2_folder, "combined")
-
         file_parts = []
+        new_files = []
         num_parts = 3
         try:
-            file_parts = utils.split_file(path=f, num_parts=num_parts, output_folder=self.a2_folder)
+            file_parts = utils.split_file(path=text_file, num_parts=num_parts, output_folder=self.a2_folder)
+            for idx, part_file in enumerate(file_parts):
+                prefix = f"{os.path.basename(part_file)}{utils.FILE_PREFIX}"
+                new_folder_name = utils.get_folders_difference(filename=part_file, folder=self.a2_folder)
+                tmp_fd, abs_tmp_path = mkstemp(dir=new_folder_name, text=True, prefix=prefix, suffix=utils.NEW_FILE_SUFFIX)
+                new_files.append(abs_tmp_path)
+
+            new_files = sorted(new_files, key=utils.sort_func)
+
+            # check sort
+            for idx, f in enumerate(new_files):
+                self.assertEqual(int(f.split(utils.FILE_PREFIX)[-3]), idx)
+
             utils.combine_files(files=file_parts, output_file=output_file)
-            self.assertEqual(utils.get_size(output_file), utils.get_size(f))
+            self.assertEqual(utils.get_size(output_file), utils.get_size(text_file))
         finally:
-            for f in file_parts + [output_file]:
-                os.remove(f)
+            for f in new_files + file_parts + [output_file]:
+                try:
+                    os.remove(f)
+                except:
+                    pass
 
     def test__get_txt_files(self):
         # must be last test
@@ -83,8 +99,17 @@ class TestUtils(unittest.TestCase):
 
     # Privates
     def get_single_text_file(self):
-        return utils.get_txt_files(logs_dir=self.test_logs_dir, ignore_hint="-NoObf4Me-")[0]
+        args = Dummy()
+        args.ignore_hint = "-NoObf4Me-"
+        args.input_folder = self.test_logs_dir
+        return utils.get_txt_files(args)[0]
 
     def get_text_files(self, logs_dir=None):
-        logs_dir = logs_dir or self.test_logs_dir
-        return utils.get_txt_files(logs_dir=logs_dir, ignore_hint="-NoObf4Me-")
+        args = Dummy()
+        args.ignore_hint = "-NoObf4Me-"
+        args.input_folder = logs_dir or self.test_logs_dir
+        return utils.get_txt_files(args)
+
+
+class Dummy:
+    pass

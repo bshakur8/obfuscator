@@ -10,7 +10,6 @@ import time
 from collections import namedtuple
 from functools import wraps
 from io import DEFAULT_BUFFER_SIZE
-from itertools import chain
 from typing import List
 
 import in_place
@@ -54,6 +53,31 @@ def init_logger(args=None):
     logger.debug(BUILTIN_IGNORE_HINT)
     if msg:
         logger.debug(msg)
+
+
+def clone_folder(raw_files, args):
+    # Copy files to obfuscate to output_folder - since they will undergo obfuscation in-place
+    new_files = []
+    common_prefix = os.path.commonprefix([args.output_folder, args.input_folder])
+    if common_prefix != args.output_folder:
+        logger.debug(f"Copy files to: {args.output_folder} for inplace obfuscation. "
+                     f"(common_prefix={common_prefix})")
+        for f in raw_files:
+            orig_basename = os.path.basename(f)
+            target_dir = os.path.dirname(f.replace(common_prefix, ''))
+            target_dir += '' if target_dir.endswith('/') else '/'
+            target_dir = os.path.join(args.output_folder, target_dir)
+            create_folder(target_dir)
+            target_file = os.path.join(target_dir, orig_basename)
+            try:
+                shutil.copyfile(f, target_file)
+            except shutil.SameFileError as e:
+                logger.debug(str(e))
+            else:
+                if args.remove_original:
+                    remove_files([f])
+            new_files.append(target_file)
+    return new_files
 
 
 def get_txt_files(args):
@@ -119,7 +143,14 @@ def remove_files(list_files):
             logger.warning(f"Failed to remove {f}: {e}")
 
 
-def obfuscate_in_place(src_file, scrubber):
+def obfuscate_in_place(src_file, scrubber, args):
+    msg = "Obfuscate Inplace: {size}{src_file}"
+    size_unit = ''
+    if args.debug:
+        _, size_unit = get_size(src_file)
+        size_unit = f'{size_unit} '
+    logger.info(msg.format(size=size_unit, src_file=src_file))
+
     # Create temp file, return fs and abs_tmp_path
     with in_place.InPlace(src_file) as fd:
         for line in fd:
@@ -227,23 +258,6 @@ def get_extended_file(filename, size_limit, num_parts, output_folder, remove_ori
         return parts
 
 
-def get_extended_file_list(files, size_limit, num_parts, output_folder, remove_original):
-    """
-    Iterate list files and split the files which size is above
-     size_limit into num_parts parts and put parts in output_folder
-
-    :param files: List[str], List of files to iterate
-    :param size_limit: int, size limit to decide on split
-    :param num_parts: int, Number of parts to split file into
-    :param output_folder: str, output folder to save parts in
-    :param remove_original: bool, Remove original files
-    :return: List[str], list of absolute files paths
-    """
-    # Flatten list of lists: ([1,2], [3,4], [5,6], []), []) ==> [1, 2, 3, 4, 5, 6]
-    return list(
-        chain.from_iterable(get_extended_file(f, size_limit, num_parts, output_folder, remove_original) for f in files))
-
-
 def get_folders_difference(filename, folder):
     """
     example:
@@ -315,7 +329,7 @@ def split_file(path: str, num_parts: int, output_folder) -> List[str]:
     logger.debug(f"Split file={path}: parts={num_parts}, lines={num_lines_per_file}, lines_per_file= {lines_per_file}")
     part_abs_path = clone_file(filename=path, target_dir=output_folder, suffix=PART_SUFFIX)
 
-    cmd = f"split -d -l {num_lines_per_file} {path} {part_abs_path}"
+    cmd = f"/usr/bin/split -d -l {num_lines_per_file} {path} {part_abs_path}"
     _ = run_local_cmd(cmd=cmd)
 
     part_name = f"{os.path.basename(path)}{PART_SUFFIX}"

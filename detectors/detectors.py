@@ -11,6 +11,10 @@ class _ObfDetectorsIterator:
         for d in IPv4Detector, FilesDirDetector, MACDetector, MyCredentialDetector:
             yield d
 
+    @property
+    def first(self):
+        return IPv4Detector
+
 
 ObfuscatorDetectors = _ObfDetectorsIterator()
 
@@ -57,7 +61,7 @@ class IPv4Filth(AbsObfuscatorFilth):
 
 class FilesDirFilth(AbsObfuscatorFilth):
     type = "file_dir"
-    regex = re.compile(r"\B/[^ \t\n]+\b", re.IGNORECASE | re.MULTILINE)
+    regex = re.compile(r"\B/[^ :\t\n]+\b", re.IGNORECASE | re.MULTILINE)
 
 
 class MACFilth(AbsObfuscatorFilth):
@@ -81,7 +85,7 @@ class MyCredentialFilth(AbsObfuscatorFilth):
         "admin_username", "admin_password", "admin_email", "support_username", "support_password"  # others
     ]
     keywords = "|".join(CREDENTIALS_KEYWORDS)
-    regex_str = fr"\b(({keywords})( :|=|)+\S+)"
+    regex_str = fr"\b(({keywords})([: =])+\S+)"
     regex = re.compile(regex_str, re.IGNORECASE | re.MULTILINE)
 
 

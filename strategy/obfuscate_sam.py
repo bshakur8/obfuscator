@@ -7,8 +7,8 @@ from datetime import datetime
 from functools import partial
 from tempfile import mkstemp
 
-import utils
 from strategy.abs_file_splitter import FileSplitters
+from strategy import utils
 
 
 class ObfuscateSplitAndMerge(FileSplitters):
@@ -92,7 +92,7 @@ class ObfuscateSplitAndMerge(FileSplitters):
                     writer.write(self._scrubber.clean(text=line))
 
         except Exception as e:
-            utils.logger.error(f"Exception in obfuscate_sam._obfuscate_worker : {str(e)}")
+            utils.logger.exception(f"Exception in obfuscate_sam._obfuscate_worker")
             # remove failed temp file
             utils.remove_files([abs_tmp_path])
 

@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from ..main import get_args_parser, SAM
+from main import get_args_parser, IN_PLACE
 
 utils_kwargs = {"log_to_debug": False}
 
@@ -22,7 +22,7 @@ class TestMain(TestCase):
                   "log_folder": "/tmp",
                   "verbose": False,
                   "workers": None,
-                  "strategy": SAM,
+                  "strategy": IN_PLACE,
                   "ignore_hint": None,
                   "measure_time": False,
                   "pool_type": None,

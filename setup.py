@@ -12,7 +12,7 @@ setup(
     author_email='bhaa@vastdata.com',
     license='Copyright (C) Vast Data Ltd.',
     packages=find_packages('.'),
-    entry_points={'console_scripts': ['obfuscator=obfuscator.src.main:main']},
+    entry_points={'console_scripts': ['obfuscator=main:main']},
     zip_safe=False,
     install_requires=REQUIRES
 )

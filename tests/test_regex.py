@@ -1,15 +1,14 @@
 import unittest
 
-from ..detectors.detectors import FilesDirFilth, IPv4Filth, MyCredentialFilth
+from detectors.detectors import FilesDirFilth, IPv4Filth, MyCredentialFilth
 
 
 class TestRegex(unittest.TestCase):
 
     def test_path_dir_success(self):
-        list_cases = [
-            "/"
-            , "  /"  # tab
-            , "       /"  # spaces
+        cases = [
+            "  /popo"  # tab
+            , "       /momo"  # spaces
             , "/a"
             , "/a.tmp"
             , "/a/b/"
@@ -19,12 +18,12 @@ class TestRegex(unittest.TestCase):
             , "/a/b/c.x.y.z         "  # tabs
         ]
 
-        self.check_errors(compiled_regex=FilesDirFilth.regex, list_cases=list_cases,
+        self.check_errors(compiled_regex=FilesDirFilth.regex, cases=cases,
                           fail_criteria=lambda m: m is None,
                           string_format="FileDir {}")
 
     def test_path_dir_failure(self):
-        list_cases = [
+        cases = [
             ""
             , "a"
             , "a.tmp"
@@ -32,12 +31,23 @@ class TestRegex(unittest.TestCase):
             , "a/b/c.tmp"
 
         ]
-        self.check_errors(compiled_regex=FilesDirFilth.regex, list_cases=list_cases,
+        self.check_errors(compiled_regex=FilesDirFilth.regex, cases=cases,
                           fail_criteria=lambda m: m is not None,
                           string_format="FileDir {}")
 
+    def test_credentials_special_keywords_success(self):
+        cases = []
+        for keyword in MyCredentialFilth.CREDENTIALS_KEYWORDS:
+            for space in (' ', ''):
+                for op in (':', '=', ' '):
+                    cases.append(f"{keyword}{space}{op}{space}123")
+
+        self.check_errors(compiled_regex=MyCredentialFilth.regex, cases=cases,
+                          fail_criteria=lambda m: m is None,
+                          string_format="Credentials {}")
+
     def test_credentials_success(self):
-        list_cases = [
+        cases = [
             "username admin"
             , "username:admin"
             , "username :admin"
@@ -48,55 +58,56 @@ class TestRegex(unittest.TestCase):
             , "             username= admin password: 1245             "
 
         ]
-        self.check_errors(compiled_regex=MyCredentialFilth.regex, list_cases=list_cases,
+        self.check_errors(compiled_regex=MyCredentialFilth.regex, cases=cases,
                           fail_criteria=lambda m: m is None,
                           string_format="Credentials {}")
 
     def test_credentials_failure(self):
-        list_cases = [
+        cases = [
             "usernameadmin"
             , "username-admin"
             , "username(admin)"
 
         ]
-        self.check_errors(compiled_regex=MyCredentialFilth.regex, list_cases=list_cases,
+        self.check_errors(compiled_regex=MyCredentialFilth.regex, cases=cases,
                           fail_criteria=lambda m: m is not None,
                           string_format="Credentials {}")
 
     def test_ip_regex_success(self):
 
-        list_cases = [
+        cases = [
             "10.20.30.40",
             "10.20.30.40:8080",
             "\t10.20.32.34",
             " 10.20.32.34",
             "        10.20.32.34",
             "        10.20.32.34           ",
-            "10.20.30.40 port 8080",
+            "10.20.30.40",
             "        1.2.32.34:56:78:90", ]
 
-        self.check_errors(compiled_regex=IPv4Filth.regex, list_cases=list_cases,
+        self.check_errors(compiled_regex=IPv4Filth.regex, cases=cases,
                           fail_criteria=lambda m: m is None,
                           string_format="IP {}")
 
     def test_ip_regex_failure(self):
 
-        list_cases = ["10.20.30.40.5.6.7.8",
-                      "10.20.30.40::56",
-                      "1.2.3.4.",
-                      "1.2.3.4port123",
-                      "1.2.3.4port 123",
-                      "1.2.3.4: 123",
-                      ]
+        cases = [
+            "502.1410.30.40.5.651.7.8",
+            "10.20:30.40::56",
+            "1.2..3.4.",
+            "1.2.3.4port123",
+            "1.2.3.4port 123",
+            "1-2-3-4",
+        ]
 
-        self.check_errors(compiled_regex=IPv4Filth.regex, list_cases=list_cases,
+        self.check_errors(compiled_regex=IPv4Filth.regex, cases=cases,
                           fail_criteria=lambda m: m is not None,
                           string_format="IP {}")
 
-    def check_errors(self, compiled_regex, list_cases, fail_criteria, string_format):
+    def check_errors(self, compiled_regex, cases, fail_criteria, string_format):
         dict_errs = {}
 
-        for idx, obj in enumerate(list_cases):
+        for idx, obj in enumerate(cases):
             m = compiled_regex.search(obj)
             if fail_criteria(m):
                 s = string_format.format(obj)
