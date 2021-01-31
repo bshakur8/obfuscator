@@ -2,27 +2,36 @@
 import argparse
 import sys
 
+from strategy.obfuscate_sap import ObfuscateSplitInPlace
+
 try:
-    from . import utils as utils
+    import utils
 except ImportError:
     import src.utils as utils
 try:
-    from .strategy.obfuscate_inplace import ObfuscateInplace
+    from strategy.obfuscate_inplace import ObfuscateInplace
 except ImportError:
     from src.strategy.obfuscate_inplace import ObfuscateInplace
 
 try:
-    from .strategy.obfuscate_sam import ObfuscateSplitAndMerge
+    from strategy.obfuscate_sam import ObfuscateSplitAndMerge
 except ImportError:
     from src.strategy.obfuscate_sam import ObfuscateSplitAndMerge
 
 try:
-    from .strategy.workers_pool import WorkersPool
+    from strategy.workers_pool import WorkersPool
 except ImportError:
     from src.strategy.workers_pool import WorkersPool
 
+
 IN_PLACE = "in_place"
 SAM = "split_merge"  # split and merge
+SAP = "split_in_place"
+
+OBFUSCATION_METHODS_FACTORY = {IN_PLACE: ObfuscateInplace,
+                               SAM: ObfuscateSplitAndMerge,
+                               SAP: ObfuscateSplitInPlace}
+
 
 SIZE_TO_SPLIT_IN_BYTES = 2 * 1024 * 1024  # in bytes - 2 MB
 
@@ -33,8 +42,7 @@ class ObfuscateManager:
      - Gets input parameters and pass it to one obfuscation strategy classes.
      - return result as-is
     """
-    OBFUSCATION_METHODS_FACTORY = {IN_PLACE: ObfuscateInplace,
-                                   SAM: ObfuscateSplitAndMerge}
+
 
     def __init__(self, args):
         """
@@ -42,9 +50,9 @@ class ObfuscateManager:
         """
         utils.logger.debug(f"args: {args.__dict__}")
 
-        strategy_cls = self.OBFUSCATION_METHODS_FACTORY.get(args.strategy)
+        strategy_cls = OBFUSCATION_METHODS_FACTORY.get(args.strategy)
         assert strategy_cls, f"Invalid Strategy: {args.strategy}. Should be empty or one of the following: " \
-                             f"{self.OBFUSCATION_METHODS_FACTORY.keys()}"
+                             f"{OBFUSCATION_METHODS_FACTORY.keys()}"
 
         strategy_obj = strategy_cls(args=args)
         utils.logger.info(strategy_obj)
@@ -67,7 +75,7 @@ def get_args_parser(test=False):
     thread_pool_choices = WorkersPool.choices()
     default_pool = WorkersPool.get_default_pool_class().__name__
 
-    parser = argparse.ArgumentParser(description="Text files src")
+    parser = argparse.ArgumentParser(description="Text files obfuscator")
     parser.add_argument("-s", "--salt", dest="salt", type=str, required=False,
                         default="1234", help="Cluster salt number for a proper identification")
     parser.add_argument("-i", "--input", dest="input_folder", type=utils.PathType(), required=True,
@@ -77,8 +85,8 @@ def get_args_parser(test=False):
     parser.add_argument("-w", "--workers", dest="workers", type=utils.IntRange(imin=1),
                         default=None,  # decided by pool type class
                         required=False, help="Number of files to obfuscate in parallel.")
-    parser.add_argument("--strategy", dest="strategy", choices=[SAM, IN_PLACE], type=str, required=False,
-                        default=SAM, help="Minimum file size to split, in bytes")
+    parser.add_argument("--strategy", dest="strategy", choices=[SAM, IN_PLACE, SAP], type=str, required=False,
+                        default=IN_PLACE, help="Minimum file size to split, in bytes")
     parser.add_argument("-m", "--min-split-size-in-bytes", dest="min_split_size_in_bytes", type=utils.IntRange(imin=1),
                         required=False, default=SIZE_TO_SPLIT_IN_BYTES,
                         help="Minimum file size to split, in bytes")

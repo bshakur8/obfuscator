@@ -86,7 +86,7 @@ class _WorkersPool:
     @classmethod
     def multiprocess(cls, workers=None):
         assert Pool, "Please install multiprocessing"
-        return WorkersPool.Executor(Pool, workers or cpu_count(), lookup_table=LOOKUP_TABLE)
+        return WorkersPool.Executor(Pool, workers or cpu_count())
 
     @classmethod
     def greenlets(cls, workers=None):

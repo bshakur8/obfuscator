@@ -3,11 +3,10 @@ import os
 from abc import ABCMeta
 from enum import Enum
 
-from .workers_pool import WorkersPool
-from .. import utils
-from ..detectors.detectors import ObfuscatorDetectors, ObfuscatorLookup
-from ..detectors.scrubber import ObfuscatorScrubber
-from ..utils import NoTextFilesFound
+import utils
+from detectors.detectors import ObfuscatorDetectors, ObfuscatorLookup
+from detectors.scrubber import ObfuscatorScrubber
+from strategy.workers_pool import WorkersPool
 
 
 class RCEnum(Enum):
@@ -17,8 +16,6 @@ class RCEnum(Enum):
 
 
 class FileSplitters(metaclass=ABCMeta):
-    # Save in memory before going to disk
-    BUFFER_SIZE = 5000
 
     def __init__(self, args, name):
         self.args = args
@@ -32,7 +29,7 @@ class FileSplitters(metaclass=ABCMeta):
         utils.logger.info(f"Working with Pool: {self.pool_function}, with {self.args.workers} workers")
 
         # List of files to obfuscate
-        self.list_raw_files = []
+        self.raw_files = []
 
         if not self.args.output_folder:
             # make output folder - input folder
@@ -50,22 +47,23 @@ class FileSplitters(metaclass=ABCMeta):
     def run(self):
         # Template
         try:
-            self._pre()
-            self._obfuscate()
+            self.pre()
+            self.obfuscate()
             utils.logger.info(f"SUCCESS")
             utils.logger.info(f"Results can be found in '{self.args.output_folder}'")
             rc = RCEnum.SUCCESS
 
-        except NoTextFilesFound as e:
+        except utils.NoTextFilesFound as e:
             utils.logger.warning(str(e))
             rc = RCEnum.IGNORED
 
         except Exception:
-            utils.logger.exception(f"FAILED")
+            utils.logger.error(f"FAILED")
             rc = RCEnum.FAILURE
+            import traceback
+            utils.logger.error(traceback.format_exc())
         finally:
-            self._post()
-
+            self.post()
         return rc.value
 
     @property
@@ -104,13 +102,14 @@ class FileSplitters(metaclass=ABCMeta):
 
         return list_txt_files
 
-    def _pre(self):
+    def pre(self):
         """ Pre operations"""
         utils.create_folder(self.args.output_folder)
+        self.raw_files = self._get_txt_files()
 
-    def _post(self):
+    def post(self):
         """Post operations"""
         pass
 
-    def _obfuscate(self):
+    def obfuscate(self):
         raise NotImplementedError()

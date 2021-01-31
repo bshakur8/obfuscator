@@ -4,7 +4,7 @@ import os
 from src.main import SAM, IN_PLACE
 from src.obfuscator.strategy.workers_pool import WorkersPool
 
-from . import utils
+import utils
 
 # infile = "/tmp/test_bundle_obf/files/f_2GB"
 infile = "/tmp/test_bundle_obf/files/f_86M"

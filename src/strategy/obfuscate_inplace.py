@@ -1,53 +1,45 @@
 #!/usr/bin/env python3
-import fileinput
 import os
-import sys
-import traceback
 from shutil import copyfile
 
-from .abs_file_splitter import FileSplitters
-from .. import utils
+import utils
+from strategy.abs_file_splitter import FileSplitters
 
 
 class ObfuscateInplace(FileSplitters):
 
-    def __init__(self, args):
-        super().__init__(args, name="InPlace")
+    def __init__(self, args, name=None):
+        super().__init__(args, name=name or "InPlace")
         self.set_default_scrubber()
 
-    def _pre(self):
-        super()._pre()
-        self.list_files = self._get_txt_files()
+    def pre(self):
+        super().pre()
 
         # Copy files to obfuscate to output_folder - since they will undergo obfuscation in-place
         # If output_folder == input_folder\file_folder
-        if os.path.commonprefix([self.args.output_folder, self.args.input_folder]) != self.args.output_folder:
-            utils.logger.debug(f"Copy files to: {self.args.output_folder} for inplace obfuscation")
-            new_files = []
-            for f in self.list_files:
-                new = os.path.join(self.args.output_folder, os.path.basename(f))
-                copyfile(f, new)
-                new_files.append(new)
+        # if None is not self.args.output_folder != self.args.input_folder:
+        #     # if os.path.commonprefix([self.args.output_folder, self.args.input_folder]) != self.args.output_folder:
+        #     utils.logger.debug(f"Copy files to: {self.args.output_folder} for inplace obfuscation")
+        #     new_files = []
+        #     for f in self.raw_files:
+        #         new = os.path.join(self.args.output_folder, os.path.basename(f))
+        #         copyfile(f, new)
+        #         if self.args.remove_original:
+        #             utils.remove_files([f])
+        #         new_files.append(new)
+        #     # Work with new list
+        #     self.raw_files = new_files
 
-            # Work with new list
-            self.list_files = new_files
-
-    def _obfuscate(self):
-        assert self.list_files, "no files to obfuscate"
-
+    def obfuscate(self):
+        if not self.raw_files:
+            raise utils.NoTextFilesFound(f"No files to obfuscate")
         utils.logger.info(f"Obfuscate Inplace all files")
+        if self.args.debug and self.args.workers == 1 or len(self.raw_files) == 1:
+            for f in self.raw_files:
+                self._obfuscate_worker(src_file=f)
+        else:
+            with self.pool_function(self.args.workers) as pool:
+                pool.map(self._obfuscate_worker, self.raw_files)
 
-        lines = []
-        with fileinput.input(files=self.list_files, inplace=True) as fd:
-            for line_idx, line in enumerate(fd):
-                # in place
-                try:
-                    lines.append(self._scrubber.clean(text=line))
-                except Exception:
-                    lines.append(f"Line {line_idx}: {traceback.format_exc().strip()}")
-
-                if len(lines) > self.BUFFER_SIZE:
-                    sys.stdout.writelines(lines)
-                    lines = []
-
-            sys.stdout.writelines(lines)
+    def _obfuscate_worker(self, src_file):
+        return utils.obfuscate_in_place(src_file, scrubber=self._scrubber)

@@ -7,10 +7,14 @@ import re
 import shutil
 import subprocess
 import time
+import traceback
 from collections import namedtuple
 from functools import wraps
+from io import DEFAULT_BUFFER_SIZE
 from itertools import chain
 from typing import List
+
+import in_place
 
 LIST_UNITS = ["bytes", "KB", "MB", "GB", "GB+"]
 FILE_PREFIX = "___"
@@ -110,8 +114,16 @@ def remove_files(list_files):
     for f in list_files:
         try:
             os.remove(f)
-        except OSError:
-            logger.warning(f"Failed to removed file: {f}")
+        except OSError as e:
+            logger.warning(f"Failed to remove {f}: {e}")
+
+
+def obfuscate_in_place(src_file, scrubber):
+    # Create temp file, return fs and abs_tmp_path
+    with in_place.InPlace(src_file) as fd:
+        for line in fd:
+            fd.write(scrubber.clean(text=line))
+    return src_file
 
 
 def create_folder(folder):
@@ -189,7 +201,7 @@ def get_lines_number(path: str) -> int:
     return int(line.split(" ")[0].strip())
 
 
-def get_extended_file(filename, size_limit, num_parts, output_folder):
+def get_extended_file(filename, size_limit, num_parts, output_folder, remove_original):
     """
     Iterate list files and split the files which size is above
      size_limit into num_parts parts and put parts in output_folder
@@ -198,6 +210,7 @@ def get_extended_file(filename, size_limit, num_parts, output_folder):
     :param size_limit: int, size limit to decide on split
     :param num_parts: int, Number of parts to split file into
     :param output_folder: str, output folder to save parts in
+    :param remove_original: bool, remove original files
     :return: List[str], list of absolute files paths
     """
     size, size_unit = get_size(filename)
@@ -206,12 +219,14 @@ def get_extended_file(filename, size_limit, num_parts, output_folder):
         # Single worker: no need to split
         return [filename]
     else:
-        splits = split_file(filename, num_parts, output_folder)
-        remove_files([filename])  # remove original file to save disk space
-        return splits
+        # File size is bigger than limit and workers > 1
+        parts = split_file(filename, num_parts, output_folder)
+        if remove_original:
+            remove_files([filename])
+        return parts
 
 
-def get_extended_file_list(files, size_limit, num_parts, output_folder):
+def get_extended_file_list(files, size_limit, num_parts, output_folder, remove_original):
     """
     Iterate list files and split the files which size is above
      size_limit into num_parts parts and put parts in output_folder
@@ -220,10 +235,12 @@ def get_extended_file_list(files, size_limit, num_parts, output_folder):
     :param size_limit: int, size limit to decide on split
     :param num_parts: int, Number of parts to split file into
     :param output_folder: str, output folder to save parts in
+    :param remove_original: bool, Remove original files
     :return: List[str], list of absolute files paths
     """
-    # Flatten list of lists: ([1,2], [3,4], [5,6], []) ==> [1, 2, 3, 4, 5, 6]
-    return list(chain.from_iterable(get_extended_file(f, size_limit, num_parts, output_folder) for f in files))
+    # Flatten list of lists: ([1,2], [3,4], [5,6], []), []) ==> [1, 2, 3, 4, 5, 6]
+    return list(
+        chain.from_iterable(get_extended_file(f, size_limit, num_parts, output_folder, remove_original) for f in files))
 
 
 def get_folders_difference(filename, folder):
@@ -298,7 +315,7 @@ def split_file(path: str, num_parts: int, output_folder) -> List[str]:
     part_abs_path = clone_file(filename=path, target_dir=output_folder, suffix=PART_SUFFIX)
 
     cmd = f"split -d -l {num_lines_per_file} {path} {part_abs_path}"
-    run_local_cmd(cmd=cmd)
+    _ = run_local_cmd(cmd=cmd)
 
     part_name = f"{os.path.basename(path)}{PART_SUFFIX}"
     files = [os.path.join(root, f) for root, dirs, files in os.walk(output_folder) for f in files
@@ -308,16 +325,16 @@ def split_file(path: str, num_parts: int, output_folder) -> List[str]:
     return files
 
 
-def combine_files(list_files: List[str], output_file: str, buffering=5000) -> None:
+def combine_files(files: List[str], output_file: str) -> None:
     """
-    :param list_files: List[str], [Sorted] list files to read sequentially
+    :param files: List[str], [Sorted] list files to read sequentially
     :param output_file: str, output filename to merge files into
-    :param buffering: int, buffering files to read, write
     """
-    with open(output_file, 'w', buffering=buffering) as dst:
-        for f in list_files:
-            with open(f, "r", buffering=buffering) as src:
+    with open(output_file, 'w', buffering=DEFAULT_BUFFER_SIZE) as dst:
+        for f in files:
+            with open(f, "r", buffering=DEFAULT_BUFFER_SIZE) as src:
                 shutil.copyfileobj(src, dst)
+            remove_files([f])
 
 
 def measure_time(func):

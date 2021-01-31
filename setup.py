@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 from setuptools import setup, find_packages
 
-REQUIRES = ['scrubadub==1.2.1']
+REQUIRES = ['scrubadub==1.2.1',
+            'in-place==0.4.0']
 
 setup(
     name='Obfuscator',
