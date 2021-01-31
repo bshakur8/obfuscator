@@ -7,7 +7,6 @@ import re
 import shutil
 import subprocess
 import time
-import traceback
 from collections import namedtuple
 from functools import wraps
 from io import DEFAULT_BUFFER_SIZE
@@ -57,22 +56,22 @@ def init_logger(args=None):
         logger.debug(msg)
 
 
-def get_txt_files(logs_dir, ignore_hint=None):
+def get_txt_files(args):
     """
     Get text files to obfuscate
-
-    :param logs_dir: str, Folder to iterate
-    :param ignore_hint: str, String for regex for ignoring files
+    :param args: args
     :return: List[str], List of text files inside folder
     """
+    ignore_hint_re = re.compile(args.ignore_hint) if args.ignore_hint else None
+    if os.path.isfile(args.input_folder):
+        return [args.input_folder] if check_text_file(args.input_folder, ignore_hint_re) else []
+
     all_files = []
 
     def onerror(exc_inst):
         logger.warning(f"Failed to read file: {exc_inst.filename}\n{str(exc_inst)}")
 
-    ignore_hint_re = re.compile(ignore_hint) if ignore_hint else None
-
-    for root, dirs, files in os.walk(logs_dir, onerror=onerror):
+    for root, dirs, files in os.walk(args.input_folder, onerror=onerror):
         for folder in dirs:
             if folder.endswith(TMP_FOLDER_PREFIX):
                 logger.warning(f"ignore folder: {os.path.join(root, folder)}")
@@ -80,33 +79,35 @@ def get_txt_files(logs_dir, ignore_hint=None):
 
         for file in files:
             abs_file = os.path.join(root, file)
-
-            if NEW_FILE_SUFFIX in file or PART_SUFFIX in file or file.endswith(".dat"):
-                logger.warning(f"ignore file: {abs_file}")
-                continue
-
-            # buffering = 1 works for text files only
-            # "r" read text with utf-8 encoding
-            try:
-                with open(abs_file, "r", buffering=1, encoding="utf-8", errors="backslashreplace") as fd:
-                    try:
-                        line = fd.readline()
-                        if line:
-                            # read one line, check if line is not empty
-                            # stop reading after finding first valid line
-                            if BUILTIN_IGNORE_HINT_RE.search(line) \
-                                    or (ignore_hint_re is not None and ignore_hint_re.search(line)):
-                                logger.warning(f"ignore file: {abs_file}")
-                            else:
-                                logger.warning(f"Text file: {abs_file}")
-                                all_files.append(abs_file)
-                    except UnicodeDecodeError:
-                        logger.warning(f"Probably a binary file: {abs_file}")
-                        continue
-            except PermissionError as e:
-                logger.warning(f"{str(e)}")
-
+            if check_text_file(abs_file, ignore_hint_re):
+                all_files.append(abs_file)
     return all_files
+
+
+def check_text_file(abs_file, ignore_hint_re):
+    if NEW_FILE_SUFFIX in abs_file or PART_SUFFIX in abs_file or abs_file.endswith(".dat"):
+        logger.warning(f"ignore file: {abs_file}")
+        return False
+
+    # buffering = 1 works for text files only, "r" read text with utf-8 encoding
+    try:
+        with open(abs_file, "r", buffering=1, encoding="utf-8") as fd:
+            try:
+                line = fd.readline()
+                if line:
+                    # read one line, check if line is not empty
+                    # stop reading after finding first valid line
+                    if BUILTIN_IGNORE_HINT_RE.search(line) \
+                            or (ignore_hint_re is not None and ignore_hint_re.search(line)):
+                        logger.warning(f"ignore file: {abs_file}")
+                    else:
+                        logger.warning(f"Text file: {abs_file}")
+                        return True
+            except UnicodeDecodeError:
+                logger.warning(f"Probably a binary file: {abs_file}")
+    except Exception:
+        logger.exception(f"Failed to get text file: {abs_file}")
+    return False
 
 
 def remove_files(list_files):

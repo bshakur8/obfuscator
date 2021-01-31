@@ -44,9 +44,6 @@ class ObfuscateSplitAndMerge(FileSplitters):
         """Obfuscate input files:
          - If there's only one workers or one file: Run in single process without multiprocessing Pool
         """
-        if not self.raw_files:
-            raise utils.NoTextFilesFound(f"No files to obfuscate")
-
         with self.pool_function(self.args.workers) as pool:
             for src_file in self.raw_files:
                 list_extended_files = utils.get_extended_file(filename=src_file,

@@ -29,8 +29,6 @@ class ObfuscateInplace(FileSplitters):
             self.raw_files = new_files
 
     def obfuscate(self):
-        if not self.raw_files:
-            raise utils.NoTextFilesFound(f"No files to obfuscate")
         utils.logger.info(f"Obfuscate Inplace all files")
         if self.args.debug and self.args.workers == 1 or len(self.raw_files) == 1:
             for f in self.raw_files:

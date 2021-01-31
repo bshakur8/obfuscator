@@ -89,23 +89,12 @@ class FileSplitters(metaclass=ABCMeta):
 
         self.scrubber = scrubber
 
-    def _get_txt_files(self):
-        """ Get text files to handle
-        :return: List of text files
-        :rtype: List[str]
-        """
-        if os.path.isdir(self.args.input_folder):
-            list_txt_files = utils.get_txt_files(self.args.input_folder, ignore_hint=self.args.ignore_hint)
-        else:
-            # file
-            list_txt_files = [self.args.input_folder]
-
-        return list_txt_files
-
     def pre(self):
         """ Pre operations"""
         utils.create_folder(self.args.output_folder)
-        self.raw_files = self._get_txt_files()
+        self.raw_files = utils.get_txt_files(self.args)
+        if not self.raw_files:
+            raise utils.NoTextFilesFound(f"No files to obfuscate")
 
     def post(self):
         """Post operations"""
