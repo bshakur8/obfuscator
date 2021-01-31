@@ -60,8 +60,7 @@ class FileSplitters(metaclass=ABCMeta):
         except Exception:
             utils.logger.error(f"FAILED")
             rc = RCEnum.FAILURE
-            import traceback
-            utils.logger.error(traceback.format_exc())
+            utils.logger.exception(f"Obfuscation failed")
         finally:
             self.post()
         return rc.value
