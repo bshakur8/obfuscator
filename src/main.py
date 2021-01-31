@@ -43,7 +43,6 @@ class ObfuscateManager:
      - return result as-is
     """
 
-
     def __init__(self, args):
         """
         :param args: Argument parser

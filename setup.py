@@ -9,10 +9,10 @@ setup(
     version='0.1',
     url='https://git.vastdata.com/dev/orion/',
     author='VAST data MGMT-APP team',
-    author_email='bhaa.shakur@vastdata.com',
+    author_email='bhaa@vastdata.com',
     license='Copyright (C) Vast Data Ltd.',
     packages=find_packages('.'),
-    entry_points={'console_scripts': ['src=src.main:main']},
+    entry_points={'console_scripts': ['obfuscator=obfuscator.src.main:main']},
     zip_safe=False,
     install_requires=REQUIRES
 )

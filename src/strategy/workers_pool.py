@@ -65,9 +65,9 @@ class _WorkersPool:
     @classmethod
     @lru_cache(1)
     def choices(cls):
-        return [fn for fn in cls.__dict__ if not fn.startswith("_")
-                and fn not in ('pool_factory', 'choices', 'choices_str', 'default', 'Executor',
-                               'get_default_pool_class')]
+        return [fn for fn in cls.__dict__
+                if not fn.startswith("_") and
+                fn not in ('pool_factory', 'choices', 'choices_str', 'default', 'Executor', 'get_default_pool_class')]
 
     @classmethod
     def default(cls, workers=None):
