@@ -22,7 +22,7 @@ class FileSplitters(metaclass=ABCMeta):
         self.name = name
         self.raw_files = []  # # List of files to obfuscate
         self._scrubber = None
-        self.pool_function = WorkersPool.pool_factory(debug=args.debug, pool_type=args.pool_type)
+        self._pool_function = None
 
         # Set args workers to be the pool's default workers number
         self.args.workers = self.args.workers or self.pool_function().workers
@@ -32,6 +32,14 @@ class FileSplitters(metaclass=ABCMeta):
             # make output folder - input folder
             self.args.output_folder = self.args.input_folder if os.path.isdir(self.args.input_folder)\
                 else os.path.dirname(self.args.input_folder)
+
+    @property
+    def management_pool(self):
+        return WorkersPool.pool_factory(debug=self.args.debug, pool_type=None, mgmt=True)
+
+    @property
+    def pool_function(self):
+        return WorkersPool.pool_factory(debug=self.args.debug, pool_type=self.args.pool_type)
 
     def __str__(self):
         return f"Strategy: {self.name}: PoolType: {self.pool_function}"
@@ -49,7 +57,6 @@ class FileSplitters(metaclass=ABCMeta):
         try:
             utils.create_folder(self.args.output_folder)
             self.raw_files = utils.get_txt_files(self.args)
-
             self.pre_all()
             self.obfuscate()
             utils.logger.info(f"SUCCESS: Results can be found in '{self.args.output_folder}'")
@@ -76,6 +83,8 @@ class FileSplitters(metaclass=ABCMeta):
         self._scrubber = scrubber
 
     def customise_scrubber(self):
+        if self.scrubber:
+            return
         scrubber = ObfuscatorScrubber()
 
         for detector in ObfuscatorDetectors:
@@ -87,11 +96,14 @@ class FileSplitters(metaclass=ABCMeta):
 
     def pre_all(self):
         """ Pre operations"""
-        pass
+        self.customise_scrubber()
 
     def post_all(self):
         """Post operations"""
         pass
+
+    def filter_raw_files(self, raw_files):
+        self.raw_files = raw_files
 
     def obfuscate(self):
         """Obfuscate input files:

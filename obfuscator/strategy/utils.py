@@ -135,6 +135,10 @@ def obfuscate_in_place(src_file, scrubber):
     return src_file
 
 
+def dummy(f):
+    return f()
+
+
 def create_folder(folder):
     """
     :param folder: Folder to create

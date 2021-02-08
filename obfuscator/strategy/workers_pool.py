@@ -41,14 +41,17 @@ class _WorkersPool:
             yield pool
 
     @classmethod
-    def pool_factory(cls, debug, pool_type):
+    def pool_factory(cls, debug, pool_type, mgmt=False):
         """
         :param pool_type: Pool type to get
         :param debug: True run dummy pool
+        :param mgmt: Get management pool
         :return: Callable, function
         """
         if debug:
             return cls.serial_pool
+        if mgmt:
+            return cls.management
         if pool_type is None:
             return cls.default
         pool_class = getattr(cls, pool_type, None)
@@ -70,6 +73,10 @@ class _WorkersPool:
     @classmethod
     def serial_pool(cls, *args, **kwargs):
         return WorkersPool.SerialPool()
+
+    @classmethod
+    def management(cls, workers=None):
+        return cls.thread_pool(workers)
 
     @classmethod
     def default(cls, workers=None):
@@ -112,6 +119,9 @@ class _WorkersPool:
         def __exit__(self, exc_type, exc_val, exc_tb):
             # propagate exception
             pass
+
+        def map_async(self, func, collection):
+            return self.map(func, collection)
 
         def map(self, func, collection):
             return [func(f) for f in collection]

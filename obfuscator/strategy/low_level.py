@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from detectors.detectors import LowLevelFilth, MyCredentialFilth
 from strategy import utils
 from strategy.abs_file_splitter import FileSplitters
@@ -7,6 +9,16 @@ class ObfuscateLowLevel(FileSplitters):
     def __init__(self, args, name=None):
         super().__init__(args, name or "LowLevel")
         self.low_level_filths = []
+        self.file_to_filth_segment = {}
+        self._threshold = None
+
+    @property
+    def threshold(self):
+        return self._threshold
+
+    @threshold.setter
+    def threshold(self, threshold):
+        self._threshold = threshold
 
     @staticmethod
     def clean_suffix(string, chars):
@@ -51,25 +63,27 @@ class ObfuscateLowLevel(FileSplitters):
             _ = utils.run_local_cmd(cmd=cmd, log_output=False, log_input=False)
         return abs_file
 
-    def iter_filth(self, src_file, sort=True, clean=True, threshold=None):
+    def iter_filth(self, src_file):
+        assert self.low_level_filths
         for filths in self.low_level_filths:
             for filth in filths:
-                grep_cmd = f'grep -Eo "{filth.regex}" {src_file} | uniq'
-                if sort:
-                    grep_cmd += " | sort -g | uniq"
-
+                grep_cmd = f'grep -Eo "{filth.regex}" {src_file} | uniq | sort -g'
                 res = utils.run_local_cmd(grep_cmd, log_output=False, log_input=True)
                 segments = set(seg for seg in res.stdout.split("\n") if seg)
-                if clean:
-                    segments = set(self.clean_suffix(seg, "'") for seg in segments)
-                if sort:
-                    segments = sorted(segments, key=lambda x: -len(x))
-                if threshold and threshold > len(segments):
-                    utils.logger.info(f"number of segments in {src_file} = {len(segments)}")
-                    yield None
-                yield filth, segments
-
+                segments = set(self.clean_suffix(seg, "'") for seg in segments)
+                yield filth, sorted(segments, key=lambda x: -len(x))
         raise StopIteration
 
-    def can_run(self, src_file, threshold=100):
-        return next(self.iter_filth(src_file, sort=False, clean=False, threshold=threshold)) is None
+    def filter_raw_files(self, raw_files):
+        excluded_files = set()
+        for src_file in raw_files:
+            filth_to_segment = defaultdict(list)
+            for filth, segments in self.iter_filth(src_file):
+                filth_to_segment[filth] += segments
+                if len(filth_to_segment[filth]) > self.threshold:
+                    utils.logger.info(f"LowLevel: Exclude {src_file}: {len(filth_to_segment[filth])}")
+                    excluded_files.add(src_file)
+            else:
+                self.file_to_filth_segment[src_file] = dict(filth_to_segment)
+
+        self.raw_files = set(self.file_to_filth_segment.keys()) - excluded_files
