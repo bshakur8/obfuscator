@@ -1,6 +1,0 @@
-[flake8]
-ignore = E731,E501,W503,F841
-exclude =
-    __pycache__
-    runner.py
-    tests/
