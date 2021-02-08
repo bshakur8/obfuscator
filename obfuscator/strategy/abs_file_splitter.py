@@ -37,7 +37,7 @@ class FileSplitters(metaclass=ABCMeta):
         return f"Strategy: {self.name}: PoolType: {self.pool_function}"
 
     def _print(self, src_file):
-        msg = "Obfuscate: {size}{src_file}"
+        msg = f"Obfuscate {self.name}: " + "{size}{src_file}"
         size_unit = ''
         if self.args.debug:
             _, size_unit = utils.get_size(self.args.input_folder, src_file)
@@ -109,12 +109,12 @@ class FileSplitters(metaclass=ABCMeta):
 
     def obfuscate_all(self, pool, files_to_obfuscate):
         # If 1 worker or one file to handle: run single process
-        return pool.map(self._obfuscate_one, files_to_obfuscate)
+        return pool.map(self.obfuscate_one, files_to_obfuscate)
 
     def pre_one(self, src_file):
         return [src_file]
 
-    def _obfuscate_one(self, src_file):
+    def obfuscate_one(self, src_file):
         raise NotImplementedError()
 
     def post_one(self, *args, **kwargs):

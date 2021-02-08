@@ -57,7 +57,7 @@ class ObfuscateSplitAndMerge(FileSplitters):
         if files_to_merge:
             pool.map(self._merge, files_to_merge.items())
 
-    def _obfuscate_one(self, src_file):
+    def obfuscate_one(self, src_file):
         """
         Worker function: Takes a filename and obfuscate it
          - Opens a new temp file to write obfuscated line to it
@@ -68,7 +68,6 @@ class ObfuscateSplitAndMerge(FileSplitters):
 
         # Create temp file, return fs and abs_tmp_path
         prefix = f"{os.path.basename(src_file)}{utils.FILE_PREFIX}"
-        utils.logger.info(f"temp={self._tmp_folder}")
         new_folder_name = utils.get_folders_difference(filename=src_file, folder=self._tmp_folder)
         obf_mkstemp = partial(mkstemp, dir=new_folder_name, text=True, prefix=prefix)
         tmp_fd, abs_tmp_path = obf_mkstemp(suffix=utils.NEW_FILE_SUFFIX)

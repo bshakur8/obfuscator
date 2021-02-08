@@ -15,7 +15,7 @@ class ObfuscateSplitInPlace(ObfuscateSplitAndMerge):
         super().__init__(args=args, name=name or "SplitInPlace")
         self.sort_func = utils.sort_func
 
-    def _obfuscate_one(self, src_file):
+    def obfuscate_one(self, src_file):
         """
         Worker function: Takes a filename and obfuscate it inplace
         :param src_file: Filename to obfuscate

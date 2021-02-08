@@ -32,7 +32,9 @@ class ObfuscateLowLevel(FileSplitters):
             ],
         ]
 
-    def _obfuscate_one(self, abs_file, **kwargs):
+    def obfuscate_one(self, abs_file, **kwargs):
+        self._print(abs_file)
+
         cmds = []
         for filth, segments in self.iter_filth(abs_file):
             for segment in segments:
@@ -48,15 +50,25 @@ class ObfuscateLowLevel(FileSplitters):
             _ = utils.run_local_cmd(cmd=cmd, log_output=False, log_input=False)
         return abs_file
 
-    def iter_filth(self, src_file):
+    def iter_filth(self, src_file, sort=True, clean=True, threshold=None):
         for filths in self.low_level_filths:
             for filth in filths:
-                # grep -Eo "([0-9]{1,3}[\.]){3}[0-9]{1,3}" var_log_secure.txt | sort --unique
-                # grep -Eo "(/[^ *\^\"']+)+" /tmp/test/files/var_log_secure.txt | uniq | sort -g | uniq
-                grep_cmd = f'grep -Eo "{filth.regex}" {src_file} | uniq | sort -g | uniq'
+                grep_cmd = f'grep -Eo "{filth.regex}" {src_file} | uniq'
+                if sort:
+                    grep_cmd += " | sort -g | uniq"
+
                 res = utils.run_local_cmd(grep_cmd, log_output=False, log_input=True)
-                # segments = set(seg.replace("'", '').replace('"', '').strip() for seg in res.stdout.split("\n") if seg)
-                segments = set(self.clean_suffix(seg, "'") for seg in res.stdout.split("\n") if seg)
-                yield filth, sorted(segments, key=lambda x: -len(x))
+                segments = set(seg for seg in res.stdout.split("\n") if seg)
+                if clean:
+                    segments = set(self.clean_suffix(seg, "'") for seg in segments)
+                if sort:
+                    segments = sorted(segments, key=lambda x: -len(x))
+                if threshold and threshold > len(segments):
+                    utils.logger.info(f"number of segments in {src_file} = {len(segments)}")
+                    yield None
+                yield filth, segments
 
         raise StopIteration
+
+    def can_run(self, src_file, threshold=100):
+        return next(self.iter_filth(src_file, sort=False, clean=False, threshold=threshold)) is None
