@@ -54,7 +54,7 @@ class ObfuscateLowLevel(FileSplitters):
                 # grep -Eo "([0-9]{1,3}[\.]){3}[0-9]{1,3}" var_log_secure.txt | sort --unique
                 # grep -Eo "(/[^ *\^\"']+)+" /tmp/test/files/var_log_secure.txt | uniq | sort -g | uniq
                 grep_cmd = f'grep -Eo "{filth.regex}" {src_file} | uniq | sort -g | uniq'
-                res = utils.run_local_cmd(grep_cmd, log_output=True, log_input=True)
+                res = utils.run_local_cmd(grep_cmd, log_output=False, log_input=True)
                 # segments = set(seg.replace("'", '').replace('"', '').strip() for seg in res.stdout.split("\n") if seg)
                 segments = set(self.clean_suffix(seg, "'") for seg in res.stdout.split("\n") if seg)
                 yield filth, sorted(segments, key=lambda x: -len(x))
