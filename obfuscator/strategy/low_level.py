@@ -8,7 +8,8 @@ class ObfuscateLowLevel(FileSplitters):
         super().__init__(args, name or "LowLevel")
         self.low_level_filths = []
 
-    def clean_suffix(self, string, chars):
+    @staticmethod
+    def clean_suffix(string, chars):
         return string.rstrip(chars).strip()
 
     def pre_all(self):

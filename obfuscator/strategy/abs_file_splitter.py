@@ -47,6 +47,10 @@ class FileSplitters(metaclass=ABCMeta):
     def run(self):
         # Template
         try:
+            utils.create_folder(self.args.output_folder)
+            self.raw_files = utils.get_txt_files(self.args)
+
+            self.pre_all()
             self.obfuscate()
             utils.logger.info(f"SUCCESS: Results can be found in '{self.args.output_folder}'")
             rc = RCEnum.SUCCESS
@@ -83,9 +87,7 @@ class FileSplitters(metaclass=ABCMeta):
 
     def pre_all(self):
         """ Pre operations"""
-        self.customise_scrubber()
-        utils.create_folder(self.args.output_folder)
-        self.raw_files = utils.get_txt_files(self.args)
+        pass
 
     def post_all(self):
         """Post operations"""
@@ -95,8 +97,6 @@ class FileSplitters(metaclass=ABCMeta):
         """Obfuscate input files:
          - If there's only one workers or one file: Run in single process without multiprocessing Pool
         """
-        self.pre_all()
-
         if not self.raw_files:
             raise utils.NoTextFilesFound(f"No files to obfuscate")
 

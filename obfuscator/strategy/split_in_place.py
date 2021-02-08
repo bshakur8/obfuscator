@@ -36,10 +36,11 @@ class ObfuscateInplace(ObfuscateSplitInPlace):
         self.num_parts = 1  # No splits
 
     def pre_all(self):
+        self.customise_scrubber()
         return FileSplitters.pre_all(self)
 
     def pre_one(self, src_file):
         return [src_file]
 
-    def post_one(self, pool, obfuscated_files):
+    def post_one(self, pool, obfuscated_files, *args, **kwargs):
         pass

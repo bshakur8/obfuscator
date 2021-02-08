@@ -40,7 +40,7 @@ class ObfuscateManager:
         strategy_obj = OBFUSCATION_METHODS_FACTORY[args.strategy](args=args)
         utils.logger.info(strategy_obj)
 
-        self._strategy = strategy_obj.obfuscate
+        self._strategy = strategy_obj.run
 
         if args.measure_time:
             self._strategy = utils.measure_time(self._strategy)

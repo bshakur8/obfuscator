@@ -26,6 +26,7 @@ class ObfuscateSplitAndMerge(FileSplitters):
 
     def pre_all(self):
         super().pre_all()
+        self.customise_scrubber()
         # Create temp folder: save file splits and removed at the end
         ts = datetime.utcnow().strftime('%Y%m%d_%H%M%S')  # format: obf_tmp_20200809_102729
         self._tmp_folder = os.path.join(self.args.output_folder, f"{utils.TMP_FOLDER_PREFIX}{ts}")
@@ -52,7 +53,7 @@ class ObfuscateSplitAndMerge(FileSplitters):
                                        output_folder=self._tmp_folder,
                                        debug=self.args.debug)
 
-    def post_one(self, pool, obfuscated_files):
+    def post_one(self, pool, obfuscated_files, *args, **kwargs):
         files_to_merge = self._prepare_merge_files(obfuscated_files=obfuscated_files)
         if files_to_merge:
             pool.map(self._merge, files_to_merge.items())
@@ -60,7 +61,7 @@ class ObfuscateSplitAndMerge(FileSplitters):
     def obfuscate_one(self, src_file):
         """
         Worker function: Takes a filename and obfuscate it
-         - Opens a new temp file to write obfuscated line to it
+         - Opens a new temp fsrc_fileile to write obfuscated line to it
          - Copy temp file to a new file with same name in target dir
         :param src_file: Filename to obfuscate
         """
