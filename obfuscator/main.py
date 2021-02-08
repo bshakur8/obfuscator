@@ -3,6 +3,7 @@ import argparse
 import sys
 
 from strategy import utils
+from strategy.low_level import ObfuscateLowLevel
 from strategy.split_and_merge import ObfuscateSplitAndMerge
 from strategy.split_in_place import ObfuscateInplace, ObfuscateSplitInPlace
 from strategy.workers_pool import WorkersPool
@@ -11,10 +12,12 @@ from strategy.workers_pool import WorkersPool
 IN_PLACE = "in_place"
 SAM = "split_merge"
 SAP = "split_in_place"
+LOW_LEVEL = "low_level"
 
 OBFUSCATION_METHODS_FACTORY = {IN_PLACE: ObfuscateInplace,
                                SAM: ObfuscateSplitAndMerge,
-                               SAP: ObfuscateSplitInPlace}
+                               SAP: ObfuscateSplitInPlace,
+                               LOW_LEVEL: ObfuscateLowLevel}
 
 SIZE_TO_SPLIT_IN_BYTES = 5 * 1024 * 1024  # in bytes - 5 MB
 

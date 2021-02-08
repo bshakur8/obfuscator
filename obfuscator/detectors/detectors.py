@@ -45,13 +45,41 @@ class AbsObfuscatorFilth(RegexFilth):
         return self.prefix + self.identifier + self.suffix
 
 
+class LowLevelFilth:
+
+    def __init__(self, salt, lookup, placeholder, regex):
+        self.salt = salt
+        self.lookup = lookup
+        self.placeholder = placeholder
+        self.regex = regex
+
+    @staticmethod
+    def _hash_data(data):
+        return hashlib.md5(str(data).encode()).hexdigest()
+
+    @property
+    @lru_cache(1)
+    def _const_hash(self):
+        return self._hash_data("".join((str(x) for x in (self.placeholder, self.salt))))
+
+    def hash(self, text):
+        return self._hash_data(f"{self._const_hash}{text}")
+
+    def identifier(self, text):
+        i = self.lookup[self.hash(text)]
+        return u'%s-%s' % (self.placeholder, i)
+
+    def replace_with(self, text):
+        return u'{{' + self.identifier(text) + u"}}"
+
+
 class PortFilth(AbsObfuscatorFilth):
     type = 'port'
     regex = re.compile(r"(port\s*[#=:>-]\s*\d+)", re.IGNORECASE | re.MULTILINE)
 
 
 class IPv4Filth(AbsObfuscatorFilth):
-    type = 'ip:port'
+    type = 'ipv4'
     # valid: IP:port, IP/subnet
     # 555.11.516.9910101 is not a valid IP
     regex = re.compile(
@@ -60,12 +88,12 @@ class IPv4Filth(AbsObfuscatorFilth):
 
 
 class FilesDirFilth(AbsObfuscatorFilth):
-    type = "file_dir"
+    type = "file-dir"
     regex = re.compile(r"\B/[^ :\t\n]+\b", re.IGNORECASE | re.MULTILINE)
 
 
 class MACFilth(AbsObfuscatorFilth):
-    type = "mac_addr"
+    type = "mac-addr"
     regex = re.compile("([0-9a-fA-F]{2}[:]){5}([0-9a-fA-F]{2})", re.IGNORECASE | re.MULTILINE)
 
 
@@ -121,7 +149,7 @@ class ObfuscatorLookup:
 
     def __getitem__(self, key):
         try:
-            return self.table[key]
+            return self.table[key[:5]]
         except KeyError:
             self.table[key] = key[:5]
             return self.table[key]

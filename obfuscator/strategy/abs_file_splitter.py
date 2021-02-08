@@ -93,8 +93,6 @@ class FileSplitters(metaclass=ABCMeta):
         self.customise_scrubber()
         utils.create_folder(self.args.output_folder)
         self.raw_files = utils.get_txt_files(self.args)
-        if not self.raw_files:
-            raise utils.NoTextFilesFound(f"No files to obfuscate")
 
     def post_all(self):
         """Post operations"""
@@ -105,6 +103,9 @@ class FileSplitters(metaclass=ABCMeta):
          - If there's only one workers or one file: Run in single process without multiprocessing Pool
         """
         self.pre_all()
+
+        if not self.raw_files:
+            raise utils.NoTextFilesFound(f"No files to obfuscate")
 
         with self.pool_function(self.args.workers) as pool:
             for src_file in self.raw_files:

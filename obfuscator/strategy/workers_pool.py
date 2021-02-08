@@ -118,7 +118,7 @@ class _WorkersPool:
             pass
 
         def map(self, func, collection):
-            return [func(src_file=f) for f in collection]
+            return [func(f) for f in collection]
 
     class Executor:
         def __init__(self, threadpool, workers, lookup_table=None):

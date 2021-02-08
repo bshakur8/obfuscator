@@ -179,16 +179,17 @@ def get_size(input_folder, path):
 RC = namedtuple("RC", "rc stdout stderr")
 
 
-def run_local_cmd(cmd, cmd_input=None, log_to_debug=True):
+def run_local_cmd(cmd, cmd_input=None, log_input=True, log_output=True):
     """
     Run local OS command
 
     :param cmd: str, Command to run
-    :param log_to_debug: bool, True iff log command and results to debug log
     :param cmd_input: stdin stream
+    :param log_input: bool, True iff log command to debug log
+    :param log_output: bool, True iff log results to debug log
     :return: str, stdout
     """
-    if log_to_debug:
+    if log_input:
         logger.debug(f"IN: {cmd}")
 
     kwargs = dict(stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -196,7 +197,7 @@ def run_local_cmd(cmd, cmd_input=None, log_to_debug=True):
 
     rc = subprocess.run(cmd, **kwargs)
 
-    if log_to_debug:
+    if log_output:
         logger.debug(f"OUT: [RC={rc.returncode}: {cmd}\nstdout={rc.stdout}\nstderr={rc.stderr}")
 
     rc = RC(rc, try_decode(rc.stdout), try_decode(rc.stderr))
