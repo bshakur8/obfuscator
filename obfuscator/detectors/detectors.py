@@ -47,15 +47,14 @@ class AbsObfuscatorFilth(RegexFilth):
 
 class LowLevelFilth:
 
-    def __init__(self, salt, lookup, placeholder, regex):
+    def __init__(self, salt, placeholder, regex):
         self.salt = salt
-        self.lookup = lookup
         self.placeholder = placeholder
         self.regex = regex
 
     @staticmethod
     def _hash_data(data):
-        return hashlib.md5(str(data).encode()).hexdigest()
+        return hashlib.md5(str(data).encode()).hexdigest()[:5]
 
     @property
     @lru_cache(1)
@@ -66,7 +65,7 @@ class LowLevelFilth:
         return self._hash_data(f"{self._const_hash}{text}")
 
     def identifier(self, text):
-        i = self.lookup[self.hash(text)]
+        i = self.hash(text)
         return u'%s-%s' % (self.placeholder, i)
 
     def replace_with(self, text):

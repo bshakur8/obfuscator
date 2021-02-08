@@ -1,4 +1,4 @@
-from detectors.detectors import LowLevelFilth, ObfuscatorLookup, MyCredentialFilth
+from detectors.detectors import LowLevelFilth, MyCredentialFilth
 from strategy import utils
 from strategy.abs_file_splitter import FileSplitters
 
@@ -8,17 +8,17 @@ class ObfuscateLowLevel(FileSplitters):
         super().__init__(args, name or "LowLevel")
         self.low_level_filths = []
 
+    def clean_suffix(self, string, chars):
+        return string.rstrip(chars).strip()
+
     def pre_all(self):
         super().pre_all()
-        pool_lookup_table = self.pool_function().lookup_table
-        lookup_table = ObfuscatorLookup(collection=pool_lookup_table)
-
         ip_regex = r"([0-9]{1,3}[\.]){3}[0-9]{1,3}"
-        file_regex = r"(/[^/ ]*)+/?"
+        file_regex = r"""(\B)(/[^ \"']+)+(\>|\w)"""
         credentials_regex = MyCredentialFilth.regex_str
-        mac_addr_regex = r"[0-9a-f]\{12\}'"
+        mac_addr_regex = r"(^|\W)([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}($|\w)"
 
-        kwargs = {'salt': self.args.salt, 'lookup': lookup_table}
+        kwargs = {'salt': self.args.salt}
 
         # Order is important!
         self.low_level_filths = [
@@ -28,7 +28,7 @@ class ObfuscateLowLevel(FileSplitters):
                 LowLevelFilth(placeholder="MAC-ADDR", regex=mac_addr_regex, **kwargs),
             ],
             [
-                LowLevelFilth(placeholder="IP-PORT", regex=ip_regex, **kwargs),
+                LowLevelFilth(placeholder="IPv4", regex=ip_regex, **kwargs),
             ],
         ]
 
@@ -37,26 +37,26 @@ class ObfuscateLowLevel(FileSplitters):
         for filth, segments in self.iter_filth(abs_file):
             for segment in segments:
                 obf_segment = filth.replace_with(segment)
-                sed_cmd = f"s/{segment}/{obf_segment}/g"
-                cmds.append(sed_cmd)
-                if len(cmds) > 1000:
-                    cmd = "sed -i '{}' {}".format(" ; ".join(cmds), abs_file)
-                    _ = utils.run_local_cmd(cmd=cmd, log_output=False, log_input=True)
-                    cmds = []
+                for t in "[]":
+                    segment = segment.replace(t, fr'\{t}')
+                cmds.append(f's@{segment}@{obf_segment}@g')
 
-        cmd = "sed -i '{}' {}".format(" ; ".join(cmds), abs_file)
-        _ = utils.run_local_cmd(cmd=cmd)
+        size = 2000
+        for i in range(0, len(cmds), size):
+            chunk = cmds[i:i + size]
+            cmd = "sed -i '{}' {}".format(" ; ".join(chunk), abs_file)
+            _ = utils.run_local_cmd(cmd=cmd, log_output=False, log_input=False)
         return abs_file
 
     def iter_filth(self, src_file):
         for filths in self.low_level_filths:
             for filth in filths:
                 # grep -Eo "([0-9]{1,3}[\.]){3}[0-9]{1,3}" var_log_secure.txt | sort --unique
-                grep_cmd = f'grep -Eo "{filth.regex}" {src_file} | sort --unique'
-                res = utils.run_local_cmd(grep_cmd, log_output=False, log_input=True)
-
-                segments = set(seg.replace("'", '').replace('"', '') for seg in res.stdout.split("\n") if seg)
-                segments = set(seg.replace('/', '\\/') for seg in segments if seg)
-                yield filth, segments
+                # grep -Eo "(/[^ *\^\"']+)+" /tmp/test/files/var_log_secure.txt | uniq | sort -g | uniq
+                grep_cmd = f'grep -Eo "{filth.regex}" {src_file} | uniq | sort -g | uniq'
+                res = utils.run_local_cmd(grep_cmd, log_output=True, log_input=True)
+                # segments = set(seg.replace("'", '').replace('"', '').strip() for seg in res.stdout.split("\n") if seg)
+                segments = set(self.clean_suffix(seg, "'") for seg in res.stdout.split("\n") if seg)
+                yield filth, sorted(segments, key=lambda x: -len(x))
 
         raise StopIteration
