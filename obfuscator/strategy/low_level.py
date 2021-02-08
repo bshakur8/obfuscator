@@ -41,7 +41,7 @@ class ObfuscateLowLevel(FileSplitters):
                     segment = segment.replace(t, fr'\{t}')
                 cmds.append(f's@{segment}@{obf_segment}@g')
 
-        size = 2000
+        size = 20000
         for i in range(0, len(cmds), size):
             chunk = cmds[i:i + size]
             cmd = "sed -i '{}' {}".format(" ; ".join(chunk), abs_file)

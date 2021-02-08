@@ -1,9 +1,10 @@
-import hashlib
 import re
 from functools import lru_cache
 
 from scrubadub.detectors.base import RegexDetector
 from scrubadub.filth import RegexFilth
+
+from strategy import utils
 
 
 class _ObfDetectorsIterator:
@@ -22,27 +23,15 @@ ObfuscatorDetectors = _ObfDetectorsIterator()
 class AbsObfuscatorFilth(RegexFilth):
     salt = None
 
-    @staticmethod
-    def _hash_data(data):
-        # Constant hash between different servers
-        return hashlib.md5(str(data).encode()).hexdigest()
-
     @property
     @lru_cache(1)
     def _const_hash(self):
-        return self._hash_data("".join((str(x) for x in (self.type, self.salt))))
-
-    @property
-    def hash(self):
-        return self._hash_data(f"{self._const_hash}{self.text.lower()}")
-
-    @property
-    def identifier(self):
-        i = self.lookup[self.hash]
-        return u'%s-%s' % (self.placeholder, i)
+        return utils.hash_string("".join((str(x) for x in (self.type, self.salt))))
 
     def replace_with(self, **kwargs):
-        return self.prefix + self.identifier + self.suffix
+        return self.prefix + \
+               u'%s-%s' % (self.placeholder, utils.hash_string(f"{self._const_hash}{self.text.lower()}")) \
+               + self.suffix
 
 
 class LowLevelFilth:
@@ -52,24 +41,13 @@ class LowLevelFilth:
         self.placeholder = placeholder
         self.regex = regex
 
-    @staticmethod
-    def _hash_data(data):
-        return hashlib.md5(str(data).encode()).hexdigest()[:5]
-
     @property
     @lru_cache(1)
     def _const_hash(self):
-        return self._hash_data("".join((str(x) for x in (self.placeholder, self.salt))))
-
-    def hash(self, text):
-        return self._hash_data(f"{self._const_hash}{text}")
-
-    def identifier(self, text):
-        i = self.hash(text)
-        return u'%s-%s' % (self.placeholder, i)
+        return utils.hash_string("".join((str(x) for x in (self.placeholder, self.salt))))
 
     def replace_with(self, text):
-        return u'{{' + self.identifier(text) + u"}}"
+        return u'{{' + u'%s-%s' % (self.placeholder, utils.hash_string(f"{self._const_hash}{text}")) + u"}}"
 
 
 class PortFilth(AbsObfuscatorFilth):
@@ -134,21 +112,3 @@ class MACDetector(RegexDetector):
 
 class FilesDirDetector(RegexDetector):
     filth_cls = FilesDirFilth
-
-
-class ObfuscatorLookup:
-    """The Lookup object is used to create an in-memory reference table to
-    create unique identifiers for ``Filth`` that is encountered.
-    Unlike scrubadub Lookup that takes that next index, Obfuscator lookup
-    takes the first # of the hashkey which is constant among all servers
-    """
-
-    def __init__(self, collection):
-        self.table = collection if collection is not None else {}
-
-    def __getitem__(self, key):
-        try:
-            return self.table[key[:5]]
-        except KeyError:
-            self.table[key] = key[:5]
-            return self.table[key]

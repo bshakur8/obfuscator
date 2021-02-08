@@ -5,7 +5,7 @@ from enum import Enum
 
 from strategy.workers_pool import WorkersPool
 from strategy import utils
-from detectors.detectors import ObfuscatorDetectors, ObfuscatorLookup
+from detectors.detectors import ObfuscatorDetectors
 from detectors.scrubber import ObfuscatorScrubber
 
 
@@ -72,19 +72,12 @@ class FileSplitters(metaclass=ABCMeta):
         self._scrubber = scrubber
 
     def customise_scrubber(self):
-        """
-        Set a lookup table for each detector
-        """
         scrubber = ObfuscatorScrubber()
 
-        pool_lookup_table = self.pool_function().lookup_table
-        for det in ObfuscatorDetectors:
-            det.filth_cls.salt = self.args.salt
-            lookup_table = det.filth_cls.lookup.table
-            det.filth_cls.lookup = ObfuscatorLookup(collection=pool_lookup_table)
-            # Show memory address of lookup to verify that table is the same among all threads\processes
-            utils.logger.debug(f"Add Detector: {det}: {type(lookup_table)}, {hex(id(lookup_table))}")
-            scrubber.add_detector(det)
+        for detector in ObfuscatorDetectors:
+            detector.filth_cls.salt = self.args.salt
+            utils.logger.debug(f"Add Detector: {detector}")
+            scrubber.add_detector(detector)
 
         self.scrubber = scrubber
 

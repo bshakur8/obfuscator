@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import hashlib
 import logging
 import math
 import os
@@ -435,6 +436,10 @@ class PathType:
             else:
                 return path
         raise argparse.ArgumentTypeError(f"path is not found: {path}")
+
+
+def hash_string(string, size=5):
+    return hashlib.md5(str(string).encode()).hexdigest()[:size]
 
 
 class NoTextFilesFound(Exception):
