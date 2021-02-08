@@ -1,0 +1,82 @@
+import os
+import shutil
+import unittest
+
+from strategy import utils
+from strategy.split_in_place import ObfuscateInplace
+
+
+class DummyArgs:
+    pass
+
+
+class TestInPlace(unittest.TestCase):
+    dir_name = None
+    obfuscate_folder = None
+
+    @classmethod
+    def setUpClass(cls):
+        utils.init_logger()
+        cls.dir_name = os.path.dirname(__file__)
+        cls.obfuscate_folder = f"{cls.dir_name}/logs_dir/Obfuscate/"
+
+    @classmethod
+    def get_args(cls):
+        args = DummyArgs()
+        args.pool_type = "multiprocess"
+        args.workers = 1
+        args.salt = "1234"
+        args.remove_original = False
+        args.debug = True
+        args.ignore_hint = None
+        args.min_split_size_in_bytes = 1 * 1024 ** 2
+        args.output_folder = os.path.join(cls.obfuscate_folder, "after")
+        args.input_folder = os.path.join(cls.obfuscate_folder, "ip_addr.log")
+
+        return args
+
+    @staticmethod
+    def _get_files(args):
+        if os.path.isdir(args.input_folder):
+            raw_files = [os.path.join(args.input_folder, f) for f in os.listdir(args.input_folder)]
+            files = utils.clone_folder(raw_files, args)
+        elif os.path.isfile(args.input_folder):
+            new_file = utils.clone_file_path(args.input_folder, target_dir=args.output_folder)
+            shutil.copyfile(args.input_folder, new_file)
+            files = [new_file]
+        else:
+            assert False
+        utils.logger.info(f"files={files}")
+        return files
+
+    def test_sanity(self):
+        args = self.get_args()
+        files = self._get_files(args)
+
+        result_file = files[0]
+        utils.logger.info(f"result_file={result_file}")
+        try:
+            obfuscator = ObfuscateInplace(args)
+            obfuscator.run()
+
+            with open(result_file) as fd:
+                content = fd.readlines()
+
+            errs = []
+            for segment in ['{{IP:PORT-32fc1}}', '{{MAC_ADDR-4cb8f}}', '{{MAC_ADDR-233a2}', '{{IP:PORT-3a14d}}']:
+                for line in content:
+                    if segment in line:
+                        break
+                else:
+                    errs.append(f"segment: {segment} not in obfuscated file")
+
+            self.assertListEqual(errs, [])
+        finally:
+            pass
+            # os.remove(result_file)
+
+    def _test_inplace(self):
+        args = self.get_args()
+        obfuscator = ObfuscateInplace(args)
+        f = f"{self.obfuscate_folder}ip_addr.log"
+        utils.obfuscate_in_place(f, obfuscator.scrubber, args=args)
