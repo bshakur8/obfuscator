@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-from obfuscator.strategy import utils
-from obfuscator.strategy.abs_file_splitter import FileSplitters
-from obfuscator.strategy.split_and_merge import ObfuscateSplitAndMerge
+from strategy import utils
+from strategy.abs_file_splitter import FileSplitters
+from strategy.split_and_merge import ObfuscateSplitAndMerge
 
 
 class ObfuscateSplitInPlace(ObfuscateSplitAndMerge):

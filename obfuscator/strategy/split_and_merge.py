@@ -7,8 +7,8 @@ from datetime import datetime
 from functools import partial
 from tempfile import mkstemp
 
-from obfuscator.strategy import utils
-from obfuscator.strategy.abs_file_splitter import FileSplitters
+from strategy import utils
+from strategy.abs_file_splitter import FileSplitters
 
 
 class ObfuscateSplitAndMerge(FileSplitters):

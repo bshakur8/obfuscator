@@ -2,10 +2,10 @@
 import argparse
 import sys
 
-from obfuscator.strategy import utils
-from obfuscator.strategy.split_and_merge import ObfuscateSplitAndMerge
-from obfuscator.strategy.split_in_place import ObfuscateInplace, ObfuscateSplitInPlace
-from obfuscator.strategy.workers_pool import WorkersPool
+from strategy import utils
+from strategy.split_and_merge import ObfuscateSplitAndMerge
+from strategy.split_in_place import ObfuscateInplace, ObfuscateSplitInPlace
+from strategy.workers_pool import WorkersPool
 
 
 IN_PLACE = "in_place"

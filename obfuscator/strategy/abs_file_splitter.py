@@ -3,10 +3,10 @@ import os
 from abc import ABCMeta
 from enum import Enum
 
-from obfuscator.strategy.workers_pool import WorkersPool
-from obfuscator.strategy import utils
-from obfuscator.detectors.detectors import ObfuscatorDetectors, ObfuscatorLookup
-from obfuscator.detectors.scrubber import ObfuscatorScrubber
+from strategy.workers_pool import WorkersPool
+from strategy import utils
+from detectors.detectors import ObfuscatorDetectors, ObfuscatorLookup
+from detectors.scrubber import ObfuscatorScrubber
 
 
 class RCEnum(Enum):
