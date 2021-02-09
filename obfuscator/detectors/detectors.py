@@ -41,6 +41,12 @@ class LowLevelFilth:
         self.placeholder = placeholder
         self.regex = regex
 
+    def __str__(self):
+        return f"{self.placeholder}"
+
+    def __repr__(self):
+        return self.__str__()
+
     @property
     @lru_cache(1)
     def _const_hash(self):

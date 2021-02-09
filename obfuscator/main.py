@@ -9,7 +9,6 @@ from strategy.split_and_merge import ObfuscateSplitAndMerge
 from strategy.split_in_place import ObfuscateInplace, ObfuscateSplitInPlace
 from strategy.workers_pool import WorkersPool
 
-
 IN_PLACE = "in_place"
 SAM = "split_merge"
 SAP = "split_in_place"
@@ -85,6 +84,8 @@ def get_args_parser(test=False):
     parser.add_argument("--pool-type", dest="pool_type", choices=thread_pool_choices, default=None,
                         required=False,
                         help=f"Choose concurrency pool: {thread_pool_choices}.\nDefault pool: {default_pool}")
+    parser.add_argument("--threshold", dest="threshold", default=500, required=False, type=utils.IntRange(imin=1),
+                        help="Threshold to try next obfuscator")
     parser.add_argument("-v", "--verbose", dest="verbose", default=False, required=False, action="store_true",
                         help="Explain what is being done")
     parser.add_argument("--debug", dest="debug", default=False, required=False, action="store_true",

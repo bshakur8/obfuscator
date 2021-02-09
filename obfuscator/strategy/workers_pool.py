@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
+import concurrent.futures
 from functools import lru_cache
+
+from strategy import utils
 
 try:
     from concurrent.futures.thread import ThreadPoolExecutor
@@ -58,6 +61,19 @@ class _WorkersPool:
         assert pool_class, "Unknown pool_type: {pool_type} [{type(pool_type)}]." + \
                            "Supported: {}".format('\n -'.join(cls.choices()))
         return pool_class
+
+    @classmethod
+    def futures_pool(cls, key_to_func, workers):
+        assert isinstance(key_to_func, dict)
+        with WorkersPool.thread_pool_executor(workers) as pool:
+            future_to_key = {pool.submit(func): key for key, func in key_to_func.items()}
+            for future in concurrent.futures.as_completed(future_to_key):
+                key = future_to_key[future]
+                try:
+                    data = future.result()
+                    yield key, data
+                except Exception as exc:
+                    utils.logger.error('%r generated an exception: %s' % (key, exc))
 
     @classmethod
     def get_default_pool_class(cls):

@@ -35,11 +35,11 @@ class FileSplitters(metaclass=ABCMeta):
         return WorkersPool.pool_factory(debug=self.args.debug, pool_type=None, mgmt=True)
 
     @property
-    def pool_function(self):
-        return WorkersPool.pool_factory(debug=self.args.debug, pool_type=self.args.pool_type)
+    def pool_function(self, debug=False):
+        return WorkersPool.pool_factory(debug=debug or self.args.debug, pool_type=self.args.pool_type)
 
     def __str__(self):
-        return f"Strategy: {self.name}: PoolType: {self.pool_function}"
+        return f"Strategy: {self.name}"
 
     def _print(self, src_file):
         msg = f"Obfuscate {self.name}: " + "{size}{src_file}"
@@ -78,15 +78,22 @@ class FileSplitters(metaclass=ABCMeta):
         """Post operations"""
         pass
 
-    def filter_raw_files(self, raw_files):
-        self.raw_files = raw_files
+    def orchestrate_workers(self, raw_files, *args, **kwargs):
+        raise NotImplemented("Not Supported")
+
+    def single_obfuscate(self, abs_file):
+        files_to_obfuscate = self.pre_one(abs_file)
+        with self.pool_function(len(files_to_obfuscate)) as pool:
+            obfuscated_files = self.obfuscate_all(pool, files_to_obfuscate)
+            self.post_one(pool, obfuscated_files)
+        utils.logger.debug(f"Done obfuscate '{abs_file}'")
 
     def obfuscate(self):
         """Obfuscate input files:
          - If there's only one workers or one file: Run in single process without multiprocessing Pool
         """
         if not self.raw_files:
-            raise utils.NoTextFilesFound(f"No files to obfuscate")
+            raise utils.NoTextFilesFound(f"{self.__str__()} No files to obfuscate")
 
         with self.pool_function(self.args.workers) as pool:
             for src_file in self.raw_files:

@@ -2,7 +2,7 @@
 import os
 
 from strategy import utils
-from obfuscator.main import SAM, IN_PLACE
+from main import SAM, IN_PLACE
 
 # infile = "/tmp/test_bundle_obf/files/f_2GB"
 from strategy.workers_pool import WorkersPool

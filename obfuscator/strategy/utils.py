@@ -36,7 +36,7 @@ def init_logger(args=None):
     :param args: argsparse args. Uses 'log_folder' and 'verbose'
     """
     handler = logging.StreamHandler()
-    log_format = u'%(asctime)s [%(levelname)-1s %(process)d]  %(message)s'
+    log_format = u'%(asctime)s [%(levelname)-1s %(process)d %(threadName)s]  %(message)s'
     handler.setFormatter(logging.Formatter(log_format))
     logger.addHandler(handler)
     level = logging.DEBUG

@@ -8,12 +8,14 @@ class ObfuscateHybrid(FileSplitters):
 
     def __init__(self, args, name=None):
         super().__init__(args, name=name or "Hybrid")
-        threshold = getattr(args, 'threshold', 100)
-        strategies = [ObfuscateLowLevel(args, threshold=threshold),
-                      ObfuscateSplitInPlace(args)]
+        strategies = {True: ObfuscateLowLevel(args, threshold=args.threshold),
+                      False: ObfuscateSplitInPlace(args)}
         self._generic = ObfuscateGenericHybrid(args, strategies=strategies)
 
     def obfuscate_one(self, src_file):
+        raise NotImplemented()
+
+    def single_obfuscate(self, abs_file):
         raise NotImplemented()
 
     def pre_all(self):
