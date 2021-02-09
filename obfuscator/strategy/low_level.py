@@ -1,11 +1,12 @@
+from random import shuffle
+from collections import defaultdict
 from functools import partial
 from threading import Thread
 
 from detectors.detectors import LowLevelFilth, MyCredentialFilth
 from strategy import utils
 from strategy.abs_file_splitter import FileSplitters
-from strategy.workers import ObfuscateWorker
-from strategy.workers_pool import WorkersPool
+from strategy.workers_pool import MultiProcessPipeline
 
 SED_SEPARATOR = '@'
 SED_FORBIDDEN_CHARS = "[]*^" + SED_SEPARATOR
@@ -43,82 +44,75 @@ class ObfuscateLowLevel(FileSplitters):
             ],
         ]
 
-    def obfuscate_one(self, abs_file, **kwargs):
+    def obfuscate_one(self, *args, **kwargs):
+        abs_file, filth_to_segment = args[0]
         self._print(abs_file)
 
         cmds = []
-        for filth, segments in self.file_to_filth_segment[abs_file].items():
+        for filth, segments in filth_to_segment.items():
             for segment in segments:
                 obf_segment = filth.replace_with(segment)
                 for t in SED_FORBIDDEN_CHARS:
                     segment = segment.replace(t, fr'\{t}')
                 cmds.append(f's{SED_SEPARATOR}{segment}{SED_SEPARATOR}{obf_segment}{SED_SEPARATOR}g')
 
-        size = min(100, int(self.args.threshold / 2))
-        for i in range(0, len(cmds), size):
-            chunk = cmds[i:i + size]
-            cmd = "sed -i '{}' {}".format(" ; ".join(chunk), abs_file)
+        for chunk in utils.chunkify(cmds, size=min(50, int(self.args.threshold / 5))):
+            cmd = "{} '{}' {}".format(self.args.sed, " ; ".join(chunk), abs_file)
             _ = utils.run_local_cmd(cmd=cmd, log_output=False, log_input=True)
         return abs_file
-
-    def iter_filth(self, src_file):
-        assert self.low_level_filths
-        kwargs = dict(log_output=False, log_input=True)
-        grep_cmd = 'grep -wPo "{r}" {f} | sort -u'
-        key_to_func = {filth: partial(utils.run_local_cmd, cmd=grep_cmd.format(r=filth.regex, f=src_file), **kwargs)
-                       for filths in self.low_level_filths for filth in filths}
-
-        filth_to_segment = {}
-        for filth, res in WorkersPool.futures_pool(key_to_func, len(key_to_func)):
-            try:
-                if filth_to_segment[filth] is None:
-                    continue  # already deleted: above threshold
-            except KeyError:
-                filth_to_segment[filth] = []
-
-            segments = set(seg for seg in res.stdout.split("\n") if seg)
-            filth_to_segment[filth] += segments
-            if len(filth_to_segment[filth]) > self.threshold:
-                utils.logger.info(f"LowLevel: Exclude {src_file}: {len(filth_to_segment[filth])} segments")
-                filth_to_segment[filth] = None  # mark is deleted
-                yield False
-                raise StopIteration  # stop checking for more filths and move to next file
-
-        # Finished all checks - we can return True
-        if any(filth_to_segment.values()):
-            num_segments = sum(len(x) for x in filth_to_segment.values())
-            utils.logger.info(f"LowLevel: Include {src_file}: {num_segments} segments")
-
-            # Fix segments inside filth_to_segment
-            for filth, segments in filth_to_segment.items():
-                segments = set(self.clean_suffix(seg, "'") for seg in segments)
-                filth_to_segment[filth] = sorted(segments, key=lambda x: -len(x))
-
-            self.file_to_filth_segment[src_file] = filth_to_segment
-            # Handle by low level strategy
-            yield True
-
-        # No segments - no need to handle
-        raise StopIteration
 
     def orchestrate_workers(self, raw_files, *args, **kwargs):
         strategy_to_worker = kwargs.get('strategy_to_worker')
         assert strategy_to_worker
 
-        low_level_worker = strategy_to_worker[True]  # type: ObfuscateWorker
-        other_strategy_worker = strategy_to_worker[False]  # type: ObfuscateWorker
+        decide = partial(self._decide, strategy_to_worker)
 
-        key_to_func = {src_file: partial(self.iter_filth, src_file) for src_file in raw_files}
+        shuffle(raw_files)
+        MultiProcessPipeline([(self._iter, 5), (decide, 2), (self._work, 5)], collection=raw_files)()
 
-        for src_file, itr in WorkersPool.futures_pool(key_to_func, len(key_to_func)):
-            for keep_here in itr:
-                if keep_here:
-                    low_level_worker.put(src_file)
-                else:
-                    other_strategy_worker.put(src_file)
+        utils.logger.debug(f"Waiting for workers to complete")
 
-        utils.logger.debug("Finish orchestrate workers")
-        threads = [Thread(target=low_level_worker.join, daemon=True),
-                   Thread(target=other_strategy_worker.join, daemon=True)]
-        [t.start() for t in threads]
-        [t.join() for t in threads]
+    def _iter(self, src_file):
+        assert self.low_level_filths
+        kwargs = dict(log_output=False, log_input=False)
+        grep = f'{self.args.grep} "{{r}}" {src_file} | sort -u'
+
+        filth_to_segment = defaultdict(list)
+        total_segments = 0
+        for filths in self.low_level_filths:
+            for filth in filths:
+                res = utils.run_local_cmd(grep.format(r=filth.regex), **kwargs)
+                segments = set(s for s in res.stdout.split("\n") if s)
+                total_segments += len(segments)
+                filth_to_segment[filth] += segments
+
+                if total_segments >= self.threshold:
+                    utils.logger.info(f"LowLevel: Exclude {src_file}: {total_segments} segments")
+                    return src_file, False, {}
+
+        # Finished all checks - we can return True
+        if total_segments:
+            utils.logger.info(f"LowLevel: Include {src_file}: {total_segments} segments")
+            for filth, segments in filth_to_segment.items():
+                segments = sorted(set(self.clean_suffix(seg, "'") for seg in segments), key=lambda x: -len(x))
+                filth_to_segment[filth] = segments
+
+            self.file_to_filth_segment[src_file] = filth_to_segment
+            return src_file, True, filth_to_segment
+
+        # No segments - no need to handle
+        return src_file, None, {}
+
+    @staticmethod
+    def _decide(strategy_to_worker, data):
+        src_file, keep_here, filth_to_segment = data
+        if keep_here is None:
+            utils.logger.info(f"LowLevel: ignore file {src_file}")
+            return None
+        return partial(strategy_to_worker[keep_here])(src_file, dict(filth_to_segment))
+
+    @staticmethod
+    def _work(obf_func):
+        if obf_func:
+            return obf_func()
+        return None

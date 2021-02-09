@@ -90,6 +90,10 @@ def get_args_parser(test=False):
                         help="Explain what is being done")
     parser.add_argument("--debug", dest="debug", default=False, required=False, action="store_true",
                         help="Debug mode: no parallel obfuscation")
+    parser.add_argument("--sed", dest="sed", default="sed -i", required=False,
+                        help="sed argument")
+    parser.add_argument("--grep", dest="grep", default="grep -Ewo", required=False,
+                        help="sed argument")  # rg -ioe
     return parser
 
 

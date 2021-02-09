@@ -1,8 +1,5 @@
-from queue import Queue
-
 from strategy import utils
 from strategy.abs_file_splitter import FileSplitters
-from strategy.workers import ObfuscateWorker
 
 
 class ObfuscateGenericHybrid(FileSplitters):
@@ -12,17 +9,17 @@ class ObfuscateGenericHybrid(FileSplitters):
         self.strategies = list(strategies.values())
         self.strategy_to_worker = {}
 
-        for flag, strategy in strategies.items():
-            worker = ObfuscateWorker(strategy=strategy, queue_class=Queue)
-            worker.start()
-            self.strategy_to_worker[flag] = worker
+        for idx, (flag, strategy) in enumerate(strategies.items(), 1):
+            # worker = ObfuscateWorker(name=strategy.__str__(), function_to_run=strategy.single_obfuscate, idx=idx)
+            # worker.start()
+            self.strategy_to_worker[flag] = strategy.single_obfuscate
 
     def pre_all(self):
         super().pre_all()
         with self.management_pool(len(self.strategies)) as pool:
             pool.map(utils.dummy, (o.pre_all for o in self.strategies))
 
-    def single_obfuscate(self, abs_file):
+    def single_obfuscate(self, abs_file, *args, **kwargs):
         raise NotImplemented()
 
     def obfuscate(self):
@@ -30,7 +27,7 @@ class ObfuscateGenericHybrid(FileSplitters):
         main_strategy.orchestrate_workers(raw_files=self.raw_files,
                                           strategy_to_worker=self.strategy_to_worker)
 
-    def obfuscate_one(self, src_file):
+    def obfuscate_one(self, *args, **kwargs):
         raise NotImplemented()
 
     def post_all(self):

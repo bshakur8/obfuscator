@@ -15,13 +15,13 @@ class ObfuscateSplitInPlace(ObfuscateSplitAndMerge):
         super().__init__(args=args, name=name or "SplitInPlace")
         self.sort_func = utils.sort_func
 
-    def obfuscate_one(self, src_file):
+    def obfuscate_one(self, *args, **kwargs):
         """
         Worker function: Takes a filename and obfuscate it inplace
-        :param src_file: Filename to obfuscate
         """
-        self._print(src_file)
-        return utils.obfuscate_in_place(src_file, scrubber=self.scrubber)
+        (abs_file, _) = args[0]
+        self._print(abs_file)
+        return utils.obfuscate_in_place(abs_file, scrubber=self.scrubber)
 
 
 class ObfuscateInplace(ObfuscateSplitInPlace):

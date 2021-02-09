@@ -12,10 +12,10 @@ class ObfuscateHybrid(FileSplitters):
                       False: ObfuscateSplitInPlace(args)}
         self._generic = ObfuscateGenericHybrid(args, strategies=strategies)
 
-    def obfuscate_one(self, src_file):
+    def obfuscate_one(self, *args, **kwargs):
         raise NotImplemented()
 
-    def single_obfuscate(self, abs_file):
+    def single_obfuscate(self, abs_file, *args, **kwargs):
         raise NotImplemented()
 
     def pre_all(self):

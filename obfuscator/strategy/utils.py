@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import logging
 import math
+import operator
 import os
 import re
 import shutil
@@ -78,7 +79,7 @@ def get_txt_files(args):
     all_files = []
 
     def onerror(exc_inst):
-        logger.warning(f"Failed to read file: {exc_inst.filename}\n{str(exc_inst)}")
+        logger.error(f"Failed to read file: {exc_inst.filename}\n{str(exc_inst)}")
 
     for root, dirs, files in os.walk(args.input_folder, onerror=onerror):
         for folder in dirs:
@@ -110,7 +111,7 @@ def check_text_file(abs_file, ignore_hint_re):
                             or (ignore_hint_re is not None and ignore_hint_re.search(line)):
                         logger.warning(f"ignore file: {abs_file}")
                     else:
-                        logger.warning(f"Text file: {abs_file}")
+                        logger.info(f"Text file: {abs_file}")
                         return True
             except ValueError:
                 logger.warning(f"Probably a binary file: {abs_file}")
@@ -125,7 +126,7 @@ def remove_files(list_files):
         try:
             os.remove(f)
         except OSError as e:
-            logger.warning(f"Failed to remove {f}: {e}")
+            logger.error(f"Failed to remove {f}: {e}")
 
 
 def obfuscate_in_place(src_file, scrubber):
@@ -138,6 +139,16 @@ def obfuscate_in_place(src_file, scrubber):
 
 def dummy(f):
     return f()
+
+
+def chunkify(items, size):
+    half = size / 3
+    for i in range(0, len(items), size):
+        batch = items[i:i + size]
+        if len(items[i + size: i + size * 2]) < half:
+            yield items[i:]
+            raise StopIteration
+        yield batch
 
 
 def create_folder(folder):
@@ -429,6 +440,16 @@ class PathType:
 @lru_cache(100_000)
 def hash_string(string, size=5):
     return hashlib.md5(str(string).encode()).hexdigest()[:size]
+
+
+def itemgetter(x, y, type_needed):
+    try:
+        op = operator.getitem(x, y)
+        if type(op) == type_needed:
+            return op
+        return itemgetter(op, y, type_needed)
+    except IndexError:
+        return x
 
 
 class NoTextFilesFound(Exception):

@@ -72,24 +72,24 @@ class ObfuscateSplitAndMerge(FileSplitters):
         if files_to_merge:
             pool.map(self._merge, files_to_merge.items())
 
-    def obfuscate_one(self, src_file):
+    def obfuscate_one(self, *args, **kwargs):
         """
         Worker function: Takes a filename and obfuscate it
-         - Opens a new temp fsrc_fileile to write obfuscated line to it
+         - Opens a new temp file to write obfuscated line to it
          - Copy temp file to a new file with same name in target dir
-        :param src_file: Filename to obfuscate
         """
-        self._print(src_file)
+        abs_file = utils.itemgetter(args, 0, type_needed=str)
+        self._print(abs_file)
 
         # Create temp file, return fs and abs_tmp_path
-        prefix = f"{os.path.basename(src_file)}{utils.FILE_PREFIX}"
-        new_folder_name = utils.get_folders_difference(filename=src_file, folder=self._tmp_folder)
+        prefix = f"{os.path.basename(abs_file)}{utils.FILE_PREFIX}"
+        new_folder_name = utils.get_folders_difference(filename=abs_file, folder=self._tmp_folder)
         obf_mkstemp = partial(mkstemp, dir=new_folder_name, text=True, prefix=prefix)
         tmp_fd, abs_tmp_path = obf_mkstemp(suffix=utils.NEW_FILE_SUFFIX)
         line_idx = 0
         try:
             with open(tmp_fd, 'w', buffering=utils.DEFAULT_BUFFER_SIZE) as writer, \
-                    open(src_file, 'r', buffering=utils.DEFAULT_BUFFER_SIZE, encoding="utf-8") as reader:
+                    open(abs_file, 'r', buffering=utils.DEFAULT_BUFFER_SIZE, encoding="utf-8") as reader:
                 for line_idx, line in enumerate(reader):
                     # clean file and write to new_logs file
                     writer.write(self.scrubber.clean(text=line))
@@ -109,12 +109,12 @@ class ObfuscateSplitAndMerge(FileSplitters):
                 writer.write(f"{line}{format_exception}")
 
         finally:
-            if self.args.remove_original or utils.PART_SUFFIX in src_file:
-                utils.logger.debug("Remove file: {}".format(src_file))
-                utils.remove_files([src_file])
-                utils.logger.debug("Done remove file: {}".format(src_file))
+            if self.args.remove_original or utils.PART_SUFFIX in abs_file:
+                utils.logger.debug("Remove file: {}".format(abs_file))
+                utils.remove_files([abs_file])
+                utils.logger.debug("Done remove file: {}".format(abs_file))
 
-        utils.logger.info(f"Done obfuscate '{src_file}'")
+        utils.logger.info(f"Done obfuscate '{abs_file}'")
         return abs_tmp_path
 
     def _prepare_merge_files(self, obfuscated_files):

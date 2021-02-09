@@ -3,8 +3,8 @@ import os
 from abc import ABCMeta
 from enum import Enum
 
-from strategy.workers_pool import WorkersPool
 from strategy import utils
+from strategy.workers_pool import WorkersPool
 
 
 class RCEnum(Enum):
@@ -27,7 +27,7 @@ class FileSplitters(metaclass=ABCMeta):
 
         if not self.args.output_folder:
             # make output folder - input folder
-            self.args.output_folder = self.args.input_folder if os.path.isdir(self.args.input_folder)\
+            self.args.output_folder = self.args.input_folder if os.path.isdir(self.args.input_folder) \
                 else os.path.dirname(self.args.input_folder)
 
     @property
@@ -78,10 +78,10 @@ class FileSplitters(metaclass=ABCMeta):
     def orchestrate_workers(self, raw_files, *args, **kwargs):
         raise NotImplemented("Not Supported")
 
-    def single_obfuscate(self, abs_file):
+    def single_obfuscate(self, abs_file, *args, **kwargs):
         files_to_obfuscate = self.pre_one(abs_file)
         with self.pool_function(len(files_to_obfuscate)) as pool:
-            obfuscated_files = self.obfuscate_all(pool, files_to_obfuscate)
+            obfuscated_files = self.obfuscate_all(pool, files_to_obfuscate, *args, **kwargs)
             self.post_one(pool, obfuscated_files)
         utils.logger.debug(f"Done obfuscate '{abs_file}'")
 
@@ -99,14 +99,15 @@ class FileSplitters(metaclass=ABCMeta):
                 self.post_one(pool, obfuscated_files)
                 utils.logger.debug(f"Done obfuscate '{src_file}'")
 
-    def obfuscate_all(self, pool, files_to_obfuscate):
+    def obfuscate_all(self, pool, files_to_obfuscate, *args):
         # If 1 worker or one file to handle: run single process
-        return pool.map(self.obfuscate_one, files_to_obfuscate)
+        listargs = [(f, utils.itemgetter(args, 0, dict)) for f in files_to_obfuscate]
+        return pool.map(self.obfuscate_one, listargs)
 
     def pre_one(self, src_file):
         return [src_file]
 
-    def obfuscate_one(self, src_file):
+    def obfuscate_one(self, *args, **kwargs):
         raise NotImplementedError()
 
     def post_one(self, *args, **kwargs):
