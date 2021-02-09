@@ -20,7 +20,7 @@ FILE_PREFIX = "___"
 TMP_FOLDER_PREFIX = "obf_tmp_"
 PART_SUFFIX = "{0}pt{0}".format(FILE_PREFIX)
 NEW_FILE_SUFFIX = "{0}new".format(FILE_PREFIX)
-BUILTIN_IGNORE_HINT = "-DONT-OBFUSCATE-ME-"
+BUILTIN_IGNORE_HINT = "NoObfuscation4Me"
 BUILTIN_IGNORE_HINT_RE = re.compile(BUILTIN_IGNORE_HINT)
 
 # logger object
@@ -51,6 +51,7 @@ def init_logger(args=None):
             msg = f"verbose mode is {mode}"
 
     logger.setLevel(level)
+    logger.info(BUILTIN_IGNORE_HINT)
     if msg:
         logger.debug(msg)
 

@@ -5,8 +5,6 @@ from enum import Enum
 
 from strategy.workers_pool import WorkersPool
 from strategy import utils
-from detectors.detectors import ObfuscatorDetectors
-from detectors.scrubber import ObfuscatorScrubber
 
 
 class RCEnum(Enum):
@@ -21,7 +19,6 @@ class FileSplitters(metaclass=ABCMeta):
         self.args = args
         self.name = name
         self.raw_files = []  # # List of files to obfuscate
-        self.scrubber = None
         self._pool_function = None
 
         # Set args workers to be the pool's default workers number
@@ -73,21 +70,9 @@ class FileSplitters(metaclass=ABCMeta):
             self.post_all()
         return rc.value
 
-    def customise_scrubber(self):
-        if self.scrubber:
-            return
-        scrubber = ObfuscatorScrubber()
-
-        for detector in ObfuscatorDetectors:
-            detector.filth_cls.salt = self.args.salt
-            utils.logger.debug(f"Add Detector: {detector}")
-            scrubber.add_detector(detector)
-
-        self.scrubber = scrubber
-
     def pre_all(self):
         """ Pre operations"""
-        self.customise_scrubber()
+        pass
 
     def post_all(self):
         """Post operations"""

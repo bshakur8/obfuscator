@@ -4,21 +4,16 @@ from detectors.detectors import LowLevelFilth, MyCredentialFilth
 from strategy import utils
 from strategy.abs_file_splitter import FileSplitters
 
+SED_SEPARATOR = '@'
+SED_FORBIDDEN_CHARS = "[]*"+SED_SEPARATOR
+
 
 class ObfuscateLowLevel(FileSplitters):
     def __init__(self, args, name=None, threshold=None):
         super().__init__(args, name or "LowLevel")
         self.low_level_filths = []
         self.file_to_filth_segment = {}
-        self._threshold = threshold
-
-    @property
-    def threshold(self):
-        return self._threshold
-
-    @threshold.setter
-    def threshold(self, threshold):
-        self._threshold = threshold
+        self.threshold = threshold
 
     @staticmethod
     def clean_suffix(string, chars):
@@ -52,9 +47,9 @@ class ObfuscateLowLevel(FileSplitters):
         for filth, segments in self.file_to_filth_segment[abs_file].items():
             for segment in segments:
                 obf_segment = filth.replace_with(segment)
-                for t in "[]":
+                for t in SED_FORBIDDEN_CHARS:
                     segment = segment.replace(t, fr'\{t}')
-                cmds.append(f's@{segment}@{obf_segment}@g')
+                cmds.append(f's{SED_SEPARATOR}{segment}{SED_SEPARATOR}{obf_segment}{SED_SEPARATOR}g')
 
         size = 20000
         for i in range(0, len(cmds), size):

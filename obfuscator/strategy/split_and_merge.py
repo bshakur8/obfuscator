@@ -7,6 +7,8 @@ from datetime import datetime
 from functools import partial
 from tempfile import mkstemp
 
+from detectors.detectors import ObfuscatorDetectors
+from detectors.scrubber import ObfuscatorScrubber
 from strategy import utils
 from strategy.abs_file_splitter import FileSplitters
 
@@ -20,6 +22,7 @@ class ObfuscateSplitAndMerge(FileSplitters):
     def __init__(self, args, name=None):
         super().__init__(args=args, name=name or "Split&Merge")
         # Folder to save file splits in
+        self.scrubber = None
         self._tmp_folder = None
         self.num_parts = self.args.workers
         self.sort_func = utils.sort_split_file_func
@@ -32,6 +35,18 @@ class ObfuscateSplitAndMerge(FileSplitters):
         self._tmp_folder = os.path.join(self.args.output_folder, f"{utils.TMP_FOLDER_PREFIX}{ts}")
         utils.logger.debug(f"Create splits temp folder: {self._tmp_folder}")
         utils.create_folder(self._tmp_folder)
+
+    def customise_scrubber(self):
+        if self.scrubber:
+            return
+        scrubber = ObfuscatorScrubber()
+
+        for detector in ObfuscatorDetectors:
+            detector.filth_cls.salt = self.args.salt
+            utils.logger.debug(f"Add Detector: {detector}")
+            scrubber.add_detector(detector)
+
+        self.scrubber = scrubber
 
     def post_all(self):
         """
