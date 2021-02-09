@@ -6,11 +6,11 @@ from strategy.abs_file_splitter import FileSplitters
 
 
 class ObfuscateLowLevel(FileSplitters):
-    def __init__(self, args, name=None):
+    def __init__(self, args, name=None, threshold=None):
         super().__init__(args, name or "LowLevel")
         self.low_level_filths = []
         self.file_to_filth_segment = {}
-        self._threshold = None
+        self._threshold = threshold
 
     @property
     def threshold(self):
@@ -49,7 +49,7 @@ class ObfuscateLowLevel(FileSplitters):
         self._print(abs_file)
 
         cmds = []
-        for filth, segments in self.iter_filth(abs_file):
+        for filth, segments in self.file_to_filth_segment[abs_file].items():
             for segment in segments:
                 obf_segment = filth.replace_with(segment)
                 for t in "[]":
