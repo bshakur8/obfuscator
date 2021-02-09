@@ -64,7 +64,6 @@ class ObfuscateSplitAndMerge(FileSplitters):
         return utils.get_extended_file(filename=src_file,
                                        size_limit=self.args.min_split_size_in_bytes,
                                        num_parts=self.num_parts,
-                                       input_folder=self.args.input_folder,
                                        output_folder=self._tmp_folder,
                                        debug=self.args.debug)
 
@@ -95,7 +94,7 @@ class ObfuscateSplitAndMerge(FileSplitters):
                     # clean file and write to new_logs file
                     writer.write(self.scrubber.clean(text=line))
 
-        except Exception as e:
+        except Exception:
             utils.logger.exception(f"Exception in obfuscate_sam._obfuscate_worker")
             # remove failed temp file
             utils.remove_files([abs_tmp_path])

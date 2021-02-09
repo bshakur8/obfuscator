@@ -1,4 +1,5 @@
 from functools import partial
+from threading import Thread
 
 from detectors.detectors import LowLevelFilth, MyCredentialFilth
 from strategy import utils
@@ -23,10 +24,10 @@ class ObfuscateLowLevel(FileSplitters):
 
     def pre_all(self):
         super().pre_all()
-        ip_regex = r"([0-9]{1,3}[\.]){3}[0-9]{1,3}"
+        ip_regex = r"([1-9]{1,3}\.([0-9]{1,3}[\.]){2}[0-9]{1,3})"
         file_regex = r"""(/[^ \"']+)+"""
         credentials_regex = MyCredentialFilth.regex_str
-        mac_addr_regex = r"([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}"
+        mac_addr_regex = r"([a-f0-9A-F]{2}:){5}[a-f0-9A-F]{2}"
 
         kwargs = {'salt': self.args.salt}
 
@@ -53,7 +54,7 @@ class ObfuscateLowLevel(FileSplitters):
                     segment = segment.replace(t, fr'\{t}')
                 cmds.append(f's{SED_SEPARATOR}{segment}{SED_SEPARATOR}{obf_segment}{SED_SEPARATOR}g')
 
-        size = int(self.args.threshold / 10)
+        size = min(100, int(self.args.threshold / 2))
         for i in range(0, len(cmds), size):
             chunk = cmds[i:i + size]
             cmd = "sed -i '{}' {}".format(" ; ".join(chunk), abs_file)
@@ -116,7 +117,8 @@ class ObfuscateLowLevel(FileSplitters):
                 else:
                     other_strategy_worker.put(src_file)
 
-        utils.logger.info("Finish orchestrate workers")
-        low_level_worker.join()
-        other_strategy_worker.join()
-
+        utils.logger.debug("Finish orchestrate workers")
+        threads = [Thread(target=low_level_worker.join, daemon=True),
+                   Thread(target=other_strategy_worker.join, daemon=True)]
+        [t.start() for t in threads]
+        [t.join() for t in threads]

@@ -21,9 +21,9 @@ class FileSplitters(metaclass=ABCMeta):
         self.raw_files = []  # # List of files to obfuscate
         self._pool_function = None
 
+        self.pool_function = WorkersPool.pool_factory(self.args.debug, pool_type=self.args.pool_type)
         # Set args workers to be the pool's default workers number
         self.args.workers = self.args.workers or self.pool_function().workers
-        utils.logger.info(f"Working with Pool: {self.pool_function}, with {self.args.workers} workers")
 
         if not self.args.output_folder:
             # make output folder - input folder
@@ -34,12 +34,8 @@ class FileSplitters(metaclass=ABCMeta):
     def management_pool(self):
         return WorkersPool.pool_factory(debug=self.args.debug, pool_type=None, mgmt=True)
 
-    @property
-    def pool_function(self, debug=False):
-        return WorkersPool.pool_factory(debug=debug or self.args.debug, pool_type=self.args.pool_type)
-
     def __str__(self):
-        return f"Strategy: {self.name}"
+        return self.name
 
     def _print(self, src_file):
         msg = f"Obfuscate {self.name}: " + "{size}{src_file}"
@@ -50,6 +46,7 @@ class FileSplitters(metaclass=ABCMeta):
         utils.logger.info(msg.format(size=size_unit, src_file=src_file))
 
     def run(self):
+        utils.logger.info(f"Working with pool {self.pool_function.__name__} with {self.args.workers} workers")
         # Template
         try:
             utils.create_folder(self.args.output_folder)

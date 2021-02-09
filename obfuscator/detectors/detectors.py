@@ -61,23 +61,24 @@ class PortFilth(AbsObfuscatorFilth):
     regex = re.compile(r"(port\s*[#=:>-]\s*\d+)", re.IGNORECASE | re.MULTILINE)
 
 
+reg = r"""\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b([:\\]\s*\d+)?"""
+
+
 class IPv4Filth(AbsObfuscatorFilth):
     type = 'ipv4'
     # valid: IP:port, IP/subnet
     # 555.11.516.9910101 is not a valid IP
-    regex = re.compile(
-        r"""\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b([:\\]\s*\d+)?""",
-        re.IGNORECASE | re.MULTILINE)
+    regex = re.compile(reg)
 
 
 class FilesDirFilth(AbsObfuscatorFilth):
     type = "file-dir"
-    regex = re.compile(r"\B/[^ :\t\n]+\b", re.IGNORECASE | re.MULTILINE)
+    regex = re.compile(r"\B/[^ :\t\n]+\b")
 
 
 class MACFilth(AbsObfuscatorFilth):
     type = "mac-addr"
-    regex = re.compile("([0-9a-fA-F]{2}[:]){5}([0-9a-fA-F]{2})", re.IGNORECASE | re.MULTILINE)
+    regex = re.compile("([0-9a-fA-F]{2}[:]){5}([0-9a-fA-F]{2})")
 
 
 class MyCredentialFilth(AbsObfuscatorFilth):

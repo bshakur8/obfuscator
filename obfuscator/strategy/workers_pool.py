@@ -87,7 +87,7 @@ class _WorkersPool:
                                'get_default_pool_class')]
 
     @classmethod
-    def serial_pool(cls, *args, **kwargs):
+    def serial_pool(cls, *_, **__):
         return WorkersPool.SerialPool()
 
     @classmethod
@@ -139,7 +139,8 @@ class _WorkersPool:
         def map_async(self, func, collection):
             return self.map(func, collection)
 
-        def map(self, func, collection):
+        @staticmethod
+        def map(func, collection):
             return [func(f) for f in collection]
 
     class Executor:

@@ -1,44 +1,61 @@
-from threading import Thread, Lock, Event
+import time
+from queue import Empty
+from threading import Thread, Event, BoundedSemaphore
 
 from strategy import utils
 
-STOP = object()
-
 
 class ObfuscateWorker(Thread):
+    idx = 1
+
     def __init__(self, strategy, queue_class):
-        super().__init__(name=f"worker:{strategy}")
+        super().__init__(name=f"worker: {strategy}", daemon=False)
+        self.idx = ObfuscateWorker.idx
+        self.idx += 1
         self.strategy = strategy
-        self.queue = queue_class(-1)
         self.running = Event()
+        self.queue = queue_class(-1)
         self.running.set()
-        self.lock = Lock()
+        self.semaphore = BoundedSemaphore(3)
+        self.threads = set()
 
     def put(self, abs_file):
-        utils.logger.debug(f"worker {self.strategy} putting '{abs_file}' in queue")
+        utils.logger.debug(f"putting '{abs_file}' in {self.name} queue")
         self.queue.put_nowait(abs_file)
 
     def join(self, timeout=None):
-        # put something to let it continue
-        utils.logger.info("Waiting for jobs to complete")
-        self.queue.put_nowait(STOP)
-        super().join(timeout)
+        utils.logger.info(f"{self.name} Waiting for obfuscation jobs to complete")
+        while not self.queue.empty() and self.semaphore._value > 0:
+            time.sleep(0.5)
+            utils.logger.info(f"{self.name} Waiting for obfuscation jobs to complete")
+
+        [t.join() for t in self.threads if t.is_alive()]
         self.running.clear()
+        super().join(timeout)
 
     def run(self):
-        while self.running:
+        self.running.set()
+        while self.running.is_set():
+            self.threads = {t for t in self.threads if t.is_alive()}
             try:
-                abs_file = self.queue.get(block=True)
-                if abs_file is STOP:
-                    utils.logger.info(f"Stopping worker: {self.strategy}")
-                    break
+                abs_file = self.queue.get(block=False)
+            except Empty:
+                time.sleep(0.1)
+                continue
             except Exception as e:
-                utils.logger.info('Exception ' + str(e))
+                utils.logger.exception(f'exception: {str(e)}')
             else:
-                with self.lock:
-                    utils.logger.info(f"worker {self.strategy} - {abs_file}")
+                with self.semaphore:
+                    utils.logger.info(f"Obfuscating {abs_file}")
                     # blocking
-                    self.strategy.single_obfuscate(abs_file)
+                    # self.strategy.single_obfuscate(abs_file)
+
+                    # non-blocking
+                    name = f"{len(self.threads) + 1}"
+                    t = Thread(target=self.strategy.single_obfuscate, args=(abs_file,), name=f"{self.idx}:{name}",
+                               daemon=False)
+                    t.start()
+                    self.threads.add(t)
             self.queue.task_done()
 
-        utils.logger.info(f"Worker: {self.strategy} stopped!")
+        utils.logger.debug("stopped!")

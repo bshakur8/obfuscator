@@ -112,9 +112,9 @@ def check_text_file(abs_file, ignore_hint_re):
                     else:
                         logger.warning(f"Text file: {abs_file}")
                         return True
-            except UnicodeDecodeError:
+            except ValueError:
                 logger.warning(f"Probably a binary file: {abs_file}")
-    except Exception:
+    except OSError:
         logger.exception(f"Failed to get text file: {abs_file}")
     return False
 
@@ -216,7 +216,7 @@ def get_lines_number(path: str) -> int:
     return int(line.split(" ")[0].strip())
 
 
-def get_extended_file(filename, size_limit, num_parts, input_folder, output_folder, debug):
+def get_extended_file(filename, size_limit, num_parts, output_folder, debug):
     """
     Iterate list files and split the files which size is above
      size_limit into num_parts parts and put parts in output_folder
@@ -224,7 +224,6 @@ def get_extended_file(filename, size_limit, num_parts, input_folder, output_fold
     :param filename: str, File to check
     :param size_limit: int, size limit to decide on split
     :param num_parts: int, Number of parts to split file into
-    :param input_folder: str, input folder
     :param output_folder: str, output folder to save parts in
     :param debug: bool, debug mode
     :return: List[str], list of absolute files paths
