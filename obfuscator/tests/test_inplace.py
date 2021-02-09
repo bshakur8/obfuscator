@@ -79,4 +79,4 @@ class TestInPlace(unittest.TestCase):
         args = self.get_args()
         obfuscator = ObfuscateInplace(args)
         f = f"{self.obfuscate_folder}ip_addr.log"
-        utils.obfuscate_in_place(f, obfuscator.scrubber, args=args)
+        utils.obfuscate_in_place(f, obfuscator.scrubber)

@@ -21,7 +21,7 @@ class FileSplitters(metaclass=ABCMeta):
         self.args = args
         self.name = name
         self.raw_files = []  # # List of files to obfuscate
-        self._scrubber = None
+        self.scrubber = None
         self._pool_function = None
 
         # Set args workers to be the pool's default workers number
@@ -48,7 +48,7 @@ class FileSplitters(metaclass=ABCMeta):
         msg = f"Obfuscate {self.name}: " + "{size}{src_file}"
         size_unit = ''
         if self.args.debug:
-            _, size_unit = utils.get_size(self.args.input_folder, src_file)
+            _, size_unit = utils.get_file_size(src_file)
             size_unit = f'{size_unit} '
         utils.logger.info(msg.format(size=size_unit, src_file=src_file))
 
@@ -72,15 +72,6 @@ class FileSplitters(metaclass=ABCMeta):
         finally:
             self.post_all()
         return rc.value
-
-    @property
-    def scrubber(self):
-        return self._scrubber
-
-    @scrubber.setter
-    def scrubber(self, scrubber):
-        # setting scrubber from outside: loosely coupled
-        self._scrubber = scrubber
 
     def customise_scrubber(self):
         if self.scrubber:

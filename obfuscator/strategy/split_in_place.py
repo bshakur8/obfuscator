@@ -21,7 +21,7 @@ class ObfuscateSplitInPlace(ObfuscateSplitAndMerge):
         :param src_file: Filename to obfuscate
         """
         self._print(src_file)
-        return utils.obfuscate_in_place(src_file, scrubber=self._scrubber)
+        return utils.obfuscate_in_place(src_file, scrubber=self.scrubber)
 
 
 class ObfuscateInplace(ObfuscateSplitInPlace):

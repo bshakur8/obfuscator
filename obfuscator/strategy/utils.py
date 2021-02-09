@@ -147,28 +147,12 @@ def create_folder(folder):
         os.makedirs(folder, exist_ok=True)
 
 
-@lru_cache(1)
-def get_folder_sizes(input_folder):
-    cmd = f"du -b {input_folder}"
-    rc = run_local_cmd(cmd=cmd)
-    output = rc.stdout.strip()
-    file_sizes = {}
-    for line in output.split('\n'):
-        bsize, _, filename = line.partition('\t')
-        file_sizes[filename] = int(bsize)
-    return file_sizes
-
-
-def get_size(input_folder, path):
+def get_file_size(path):
     """
-    :param input_folder: str, input folder
     :param path: str, File path
     :return: tuple, Original size, size + unit to to display
     """
-    try:
-        orig_size = get_folder_sizes(input_folder)[path]
-    except KeyError:
-        orig_size = int(os.stat(path).st_size)
+    orig_size = int(os.stat(path).st_size)
 
     size = orig_size
     unit = "Nan"
@@ -246,7 +230,7 @@ def get_extended_file(filename, size_limit, num_parts, input_folder, output_fold
     """
     size = None
     if debug or num_parts > 1:
-        size, size_unit = get_size(input_folder, filename)
+        size, size_unit = get_file_size(filename)
         logger.debug(f"File [{size_unit}]: {filename}")
 
     if num_parts == 1 or (size and size < size_limit):
@@ -442,6 +426,7 @@ class PathType:
         raise argparse.ArgumentTypeError(f"path is not found: {path}")
 
 
+@lru_cache(100_000)
 def hash_string(string, size=5):
     return hashlib.md5(str(string).encode()).hexdigest()[:size]
 

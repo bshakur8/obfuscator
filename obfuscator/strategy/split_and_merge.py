@@ -78,7 +78,7 @@ class ObfuscateSplitAndMerge(FileSplitters):
                     open(src_file, 'r', buffering=utils.DEFAULT_BUFFER_SIZE, encoding="utf-8") as reader:
                 for line_idx, line in enumerate(reader):
                     # clean file and write to new_logs file
-                    writer.write(self._scrubber.clean(text=line))
+                    writer.write(self.scrubber.clean(text=line))
 
         except Exception as e:
             utils.logger.exception(f"Exception in obfuscate_sam._obfuscate_worker")

@@ -17,7 +17,7 @@ class TestUtils(unittest.TestCase):
         self.a2_folder = f"{dir_name}/logs_dir/a2"
 
     def test__get_size(self):
-        x = utils.get_size(self.get_single_text_file())
+        x = utils.get_file_size(self.get_single_text_file())
         self.assertEqual(type(x), tuple)
         self.assertEqual(len(x), 2)
         self.assertEqual(type(x[0]), int)
@@ -82,7 +82,7 @@ class TestUtils(unittest.TestCase):
                 self.assertEqual(int(f.split(utils.FILE_PREFIX)[-3]), idx)
 
             utils.combine_files(files=file_parts, output_file=output_file)
-            self.assertEqual(utils.get_size(output_file), utils.get_size(text_file))
+            self.assertEqual(utils.get_file_size(output_file), utils.get_file_size(text_file))
         finally:
             for f in new_files + file_parts + [output_file]:
                 try:
