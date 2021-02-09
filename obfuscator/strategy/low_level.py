@@ -14,6 +14,7 @@ class ObfuscateLowLevel(FileSplitters):
         self.low_level_filths = []
         self.file_to_filth_segment = {}
         self.threshold = args.threshold
+        self._log_kwargs = dict(log_output=self.args.debug_prints, log_input=self.args.debug_prints)
 
     @staticmethod
     def clean_suffix(string, chars):
@@ -54,19 +55,18 @@ class ObfuscateLowLevel(FileSplitters):
 
         for chunk in utils.chunkify(cmds, size=min(50, int(self.args.threshold / 5))):
             cmd = "{} '{}' {}".format(self.args.sed, " ; ".join(chunk), abs_file)
-            _ = utils.run_local_cmd(cmd=cmd, log_output=self.args.debug_prints, log_input=True)
+            _ = utils.run_local_cmd(cmd=cmd, **self._log_kwargs)
         return abs_file
 
     def orchestrate_iterator(self, src_file, *args, **kwargs):
         assert self.low_level_filths
-        log_kwargs = dict(log_output=self.args.debug_prints, log_input=self.args.debug_prints)
         grep = f'{self.args.grep} "{{r}}" {src_file} | sort -u'
 
         filth_to_segment = defaultdict(list)
         total_segments = 0
         for filths in self.low_level_filths:
             for filth in filths:
-                res = utils.run_local_cmd(grep.format(r=filth.regex), **log_kwargs)
+                res = utils.run_local_cmd(grep.format(r=filth.regex), **self._log_kwargs)
                 segments = set(s for s in res.stdout.split("\n") if s)
                 total_segments += len(segments)
                 filth_to_segment[filth] += segments

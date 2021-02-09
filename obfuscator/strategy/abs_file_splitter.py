@@ -2,7 +2,7 @@
 import os
 import random
 from abc import ABCMeta
-from functools import partial, lru_cache
+from functools import lru_cache, partial
 
 from strategy import utils
 from strategy.enums import RCEnum
@@ -118,9 +118,6 @@ class ObfuscateGenericHybrid(FileSplitters):
     def __init__(self, args, hybrid, name=None):
         super().__init__(args, name=name or "GenericHybrid")
         self.hybrid = hybrid
-        self.strategy_to_worker = {}
-        for flag, strategy in hybrid.strategies.items():
-            self.strategy_to_worker[flag] = strategy.single_obfuscate
 
     def pre_all(self):
         super().pre_all()
@@ -143,12 +140,13 @@ class ObfuscateGenericHybrid(FileSplitters):
 
 
 class AbsHybrid(FileSplitters):
-    def __init__(self, args, name, strategies):
+    def __init__(self, args, name, strategies, main_strategy):
         super().__init__(args, name)
+        self.default_process_num = 5
         self.pipeline = None
         self.strategies = strategies
-        self.main_strategy = strategies[True]
-        self.default_process_num = 5
+        self.main_strategy = main_strategy
+        self.strategy_to_worker = {flag: strategy.single_obfuscate for flag, strategy in strategies.items()}
 
     @property
     @lru_cache(1)
@@ -179,20 +177,31 @@ class AbsHybrid(FileSplitters):
 
     def orchestrate_run(self):
         MultiProcessPipeline(self.pipeline, self.raw_files, self.default_process_num)(ignore_results=True)
-        utils.logger.debug(f"Waiting for workers to complete")
 
-    @staticmethod
-    def orchestrate_decide(main_strategy, strategy_to_worker, data):
-        src_file, move_to_main_strategy, future_args = data
-        if future_args is None:
-            future_args = tuple()
-        if move_to_main_strategy is None:
-            utils.logger.info(f"{main_strategy}: ignore file {src_file}")
+    @property
+    @lru_cache(1)
+    def orchestrator(self):
+        return self.Orchestrator(self)
+
+    class Orchestrator:
+        """
+        Helper class for hybrid classes.
+        """
+
+        def __init__(self, hybrid):
+            self.hybrid = hybrid
+
+        def decide(self, data):
+            src_file, move_to_main_strategy, future_args = data
+            if future_args is None:
+                future_args = tuple()
+            if move_to_main_strategy is None:
+                utils.logger.info(f"{self.hybrid.main_strategy}: ignore file {src_file}")
+                return None
+            return partial(self.hybrid.strategy_to_worker[move_to_main_strategy])(src_file, future_args)
+
+        @staticmethod
+        def obfuscate_file(obf_func):
+            if obf_func:
+                return obf_func()
             return None
-        return partial(strategy_to_worker[move_to_main_strategy])(src_file, future_args)
-
-    @staticmethod
-    def orchestrate_work(obf_func):
-        if obf_func:
-            return obf_func()
-        return None

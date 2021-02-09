@@ -1,5 +1,3 @@
-from functools import partial
-
 from strategy.abs_file_splitter import AbsHybrid
 from strategy.low_level import ObfuscateLowLevel
 from strategy.split_and_merge import ObfuscateSplitAndMerge
@@ -12,11 +10,12 @@ class ObfuscateHybrid(AbsHybrid):
         strategies = {True: ObfuscateLowLevel(args),
                       False: ObfuscateSplitInPlace(args)}
 
-        super().__init__(args, name=name or "HybridLowLevelSplit", strategies=strategies)
+        super().__init__(args, name=name or "HybridLowLevelSplit", strategies=strategies,
+                         main_strategy=strategies[True])
 
-        self.pipeline = [(strategies[True].orchestrate_iterator, 5),
-                         (partial(super().orchestrate_decide, self.main_strategy, self.generic.strategy_to_worker), 2),
-                         (super().orchestrate_work, 8)]
+        self.pipeline = [(self.main_strategy.orchestrate_iterator, 5),
+                         (self.orchestrator.decide, 2),
+                         (self.orchestrator.obfuscate_file, 8)]
 
 
 class ObfuscateHybridSplit(AbsHybrid):
@@ -25,9 +24,8 @@ class ObfuscateHybridSplit(AbsHybrid):
         strategies = {True: ObfuscateSplitAndMerge(args),
                       False: ObfuscateSplitInPlace(args)}
 
-        super().__init__(args, name=name or "HybridSplits", strategies=strategies)
+        super().__init__(args, name=name or "HybridSplits", strategies=strategies, main_strategy=strategies[True])
 
-        self.pipeline = [(strategies[True].orchestrate_iterator, 1),
-                         (partial(super().orchestrate_decide, self.main_strategy, self.generic.strategy_to_worker), 1),
-                         (super().orchestrate_work, 10)]
-
+        self.pipeline = [(self.main_strategy.orchestrate_iterator, 1),
+                         (self.orchestrator.decide, 1),
+                         (self.orchestrator.obfuscate_file, 10)]
