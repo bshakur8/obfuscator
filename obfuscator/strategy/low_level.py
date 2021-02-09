@@ -1,23 +1,19 @@
-from random import shuffle
 from collections import defaultdict
-from functools import partial
-from threading import Thread
 
 from detectors.detectors import LowLevelFilth, MyCredentialFilth
 from strategy import utils
 from strategy.abs_file_splitter import FileSplitters
-from strategy.workers_pool import MultiProcessPipeline
 
 SED_SEPARATOR = '@'
 SED_FORBIDDEN_CHARS = "[]*^" + SED_SEPARATOR
 
 
 class ObfuscateLowLevel(FileSplitters):
-    def __init__(self, args, name=None, threshold=None):
+    def __init__(self, args, name=None):
         super().__init__(args, name or "LowLevel")
         self.low_level_filths = []
         self.file_to_filth_segment = {}
-        self.threshold = threshold
+        self.threshold = args.threshold
 
     @staticmethod
     def clean_suffix(string, chars):
@@ -58,30 +54,19 @@ class ObfuscateLowLevel(FileSplitters):
 
         for chunk in utils.chunkify(cmds, size=min(50, int(self.args.threshold / 5))):
             cmd = "{} '{}' {}".format(self.args.sed, " ; ".join(chunk), abs_file)
-            _ = utils.run_local_cmd(cmd=cmd, log_output=False, log_input=True)
+            _ = utils.run_local_cmd(cmd=cmd, log_output=self.args.debug_prints, log_input=True)
         return abs_file
 
-    def orchestrate_workers(self, raw_files, *args, **kwargs):
-        strategy_to_worker = kwargs.get('strategy_to_worker')
-        assert strategy_to_worker
-
-        decide = partial(self._decide, strategy_to_worker)
-
-        shuffle(raw_files)
-        MultiProcessPipeline([(self._iter, 5), (decide, 2), (self._work, 5)], collection=raw_files)()
-
-        utils.logger.debug(f"Waiting for workers to complete")
-
-    def _iter(self, src_file):
+    def orchestrate_iterator(self, src_file, *args, **kwargs):
         assert self.low_level_filths
-        kwargs = dict(log_output=False, log_input=False)
+        log_kwargs = dict(log_output=self.args.debug_prints, log_input=self.args.debug_prints)
         grep = f'{self.args.grep} "{{r}}" {src_file} | sort -u'
 
         filth_to_segment = defaultdict(list)
         total_segments = 0
         for filths in self.low_level_filths:
             for filth in filths:
-                res = utils.run_local_cmd(grep.format(r=filth.regex), **kwargs)
+                res = utils.run_local_cmd(grep.format(r=filth.regex), **log_kwargs)
                 segments = set(s for s in res.stdout.split("\n") if s)
                 total_segments += len(segments)
                 filth_to_segment[filth] += segments
@@ -98,21 +83,7 @@ class ObfuscateLowLevel(FileSplitters):
                 filth_to_segment[filth] = segments
 
             self.file_to_filth_segment[src_file] = filth_to_segment
-            return src_file, True, filth_to_segment
+            return src_file, True, dict(filth_to_segment)
 
         # No segments - no need to handle
         return src_file, None, {}
-
-    @staticmethod
-    def _decide(strategy_to_worker, data):
-        src_file, keep_here, filth_to_segment = data
-        if keep_here is None:
-            utils.logger.info(f"LowLevel: ignore file {src_file}")
-            return None
-        return partial(strategy_to_worker[keep_here])(src_file, dict(filth_to_segment))
-
-    @staticmethod
-    def _work(obf_func):
-        if obf_func:
-            return obf_func()
-        return None

@@ -40,16 +40,11 @@ class MultiProcessPipeline:
 
         self.processes = []
         for idx, data in enumerate(funcs):
-            if isinstance(data, tuple):
-                current_func, current_size = data
-            else:
-                current_func, current_size = data, default_process_num
+            current_func, current_size = self.get_current_info(data, default_process_num)
+            next_func, next_size = self.get_next_info(funcs, idx, default_process_num)
 
-            assert callable(current_func), f"{current_func} is not a callable"
-            try:
-                (next_func, next_size) = funcs[idx + 1]
-            except IndexError:
-                next_func, next_size = None, None
+            assert callable(current_func), f"Function '{current_func}' is not a callable"
+
             readq, writeq = self.queues[idx], self.queues[idx + 1]
             barrier = multiprocessing.Barrier(current_size)
             start_size = start_size or max(1, current_size)
@@ -62,9 +57,27 @@ class MultiProcessPipeline:
         self.start_size = start_size
         self.start_func = first_func
 
-    def __call__(self, *args, **kwargs):
+    @staticmethod
+    def get_current_info(data, default_process_num):
+        if isinstance(data, tuple):
+            current_func, current_size = data
+        else:
+            current_func, current_size = data, default_process_num
+        return current_func, current_size
+
+    @staticmethod
+    def get_next_info(funcs, idx, default_process_num):
+        try:
+            next_func, next_size = funcs[idx + 1]
+        except TypeError:
+            next_func, next_size = (funcs[idx + 1], default_process_num)
+        except IndexError:
+            next_func, next_size = None, None
+        return next_func, next_size
+
+    def __call__(self, ignore_results=False, *args, **kwargs):
         self.start()
-        self.join()
+        self.join(ignore_results=ignore_results)
 
     def start(self):
         for p in itertools.chain.from_iterable(self.processes):
@@ -75,7 +88,7 @@ class MultiProcessPipeline:
         for _ in range(self.start_size):
             start_queue.put(None)
 
-    def join(self):
+    def join(self, ignore_results):
         # Skip joining the last queue - no one is taking from it
         for q in self.queues[:1]:
             q.join()
@@ -86,7 +99,7 @@ class MultiProcessPipeline:
             result_task = last_q.get()
             if result_task is None:
                 stops += 1
-            else:
+            elif not ignore_results:
                 results.append(result_task)
         return (t.result for t in sorted(results, key=lambda t: t.index))
 

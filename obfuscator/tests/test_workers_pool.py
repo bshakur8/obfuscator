@@ -18,7 +18,7 @@ class TestWorkersPool(unittest.TestCase):
 
     def test_choices(self):
         choices = WorkersPool.choices()
-        self.assertEqual(len(choices), 7)
+        self.assertEqual(len(choices), 11)
         self.assertTrue(type(WorkersPool.default(5)),
                         type(WorkersPool.thread_pool(5)))
 

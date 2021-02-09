@@ -2,7 +2,7 @@
 import os
 
 from strategy import utils
-from main import SAM, IN_PLACE
+from strategy.enums import StrategyTypes
 
 # infile = "/tmp/test_bundle_obf/files/f_2GB"
 from strategy.workers_pool import WorkersPool
@@ -26,7 +26,7 @@ def pre():
 
 
 def sam_test():
-    strategy_name = SAM
+    strategy_name = StrategyTypes.SAM.value
     utils.logger.info("Main runner")
 
     for pool in WorkersPool:
@@ -42,7 +42,7 @@ def sam_test():
 
 
 def inplace_test():
-    strategy_name = IN_PLACE
+    strategy_name = StrategyTypes.IN_PLACE.value
     run_name = f"run_{strategy_name}"
 
     # config log and result file

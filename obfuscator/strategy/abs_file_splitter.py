@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 import os
+import random
 from abc import ABCMeta
-from enum import Enum
+from functools import partial, lru_cache
 
 from strategy import utils
-from strategy.workers_pool import WorkersPool
-
-
-class RCEnum(Enum):
-    SUCCESS = 0
-    IGNORED = 1
-    FAILURE = 2
+from strategy.enums import RCEnum
+from strategy.workers_pool import WorkersPool, MultiProcessPipeline
 
 
 class FileSplitters(metaclass=ABCMeta):
@@ -75,13 +71,16 @@ class FileSplitters(metaclass=ABCMeta):
         """Post operations"""
         pass
 
-    def orchestrate_workers(self, raw_files, *args, **kwargs):
+    def orchestrate_run(self):
         raise NotImplemented("Not Supported")
+
+    def orchestrate_iterator(self, src_file, *args, **kwargs):
+        return src_file, random.choice((True, False)), None
 
     def single_obfuscate(self, abs_file, *args, **kwargs):
         files_to_obfuscate = self.pre_one(abs_file)
         with self.pool_function(len(files_to_obfuscate)) as pool:
-            obfuscated_files = self.obfuscate_all(pool, files_to_obfuscate, *args, **kwargs)
+            obfuscated_files = self.obfuscate_all(pool, files_to_obfuscate, *args)
             self.post_one(pool, obfuscated_files)
         utils.logger.debug(f"Done obfuscate '{abs_file}'")
 
@@ -112,3 +111,88 @@ class FileSplitters(metaclass=ABCMeta):
 
     def post_one(self, *args, **kwargs):
         pass
+
+
+class ObfuscateGenericHybrid(FileSplitters):
+
+    def __init__(self, args, hybrid, name=None):
+        super().__init__(args, name=name or "GenericHybrid")
+        self.hybrid = hybrid
+        self.strategy_to_worker = {}
+        for flag, strategy in hybrid.strategies.items():
+            self.strategy_to_worker[flag] = strategy.single_obfuscate
+
+    def pre_all(self):
+        super().pre_all()
+        with self.management_pool(len(self.hybrid.strategies)) as pool:
+            pool.map(utils.dummy, (o.pre_all for o in self.hybrid.strategies.values()))
+
+    def single_obfuscate(self, abs_file, *args, **kwargs):
+        raise NotImplemented()
+
+    def obfuscate(self):
+        return self.hybrid.orchestrate_run()
+
+    def obfuscate_one(self, *args, **kwargs):
+        raise NotImplemented()
+
+    def post_all(self):
+        super().post_all()
+        with self.management_pool(self.args.workers) as pool:
+            pool.map(utils.dummy, (o.post_all for o in self.hybrid.strategies.values()))
+
+
+class AbsHybrid(FileSplitters):
+    def __init__(self, args, name, strategies):
+        super().__init__(args, name)
+        self.pipeline = None
+        self.strategies = strategies
+        self.main_strategy = strategies[True]
+        self.default_process_num = 5
+
+    @property
+    @lru_cache(1)
+    def generic(self):
+        return ObfuscateGenericHybrid(self.args, hybrid=self)
+
+    def obfuscate_one(self, *args, **kwargs):
+        raise NotImplemented()
+
+    def single_obfuscate(self, abs_file, *args, **kwargs):
+        raise NotImplemented()
+
+    def pre_all(self):
+        self.generic.raw_files = self.raw_files
+        return self.generic.pre_all()
+
+    def pre_one(self, src_file):
+        return self.generic.pre_one(src_file)
+
+    def obfuscate(self):
+        return self.generic.obfuscate()
+
+    def post_one(self, *args, **kwargs):
+        return self.generic.post_one(*args, **kwargs)
+
+    def post_all(self):
+        return self.generic.post_all()
+
+    def orchestrate_run(self):
+        MultiProcessPipeline(self.pipeline, self.raw_files, self.default_process_num)(ignore_results=True)
+        utils.logger.debug(f"Waiting for workers to complete")
+
+    @staticmethod
+    def orchestrate_decide(main_strategy, strategy_to_worker, data):
+        src_file, move_to_main_strategy, future_args = data
+        if future_args is None:
+            future_args = tuple()
+        if move_to_main_strategy is None:
+            utils.logger.info(f"{main_strategy}: ignore file {src_file}")
+            return None
+        return partial(strategy_to_worker[move_to_main_strategy])(src_file, future_args)
+
+    @staticmethod
+    def orchestrate_work(obf_func):
+        if obf_func:
+            return obf_func()
+        return None

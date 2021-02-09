@@ -7,15 +7,15 @@ class TestRegex(unittest.TestCase):
 
     def test_path_dir_success(self):
         cases = [
-            "  /popo"  # tab
-            , "       /momo"  # spaces
+            "  /popo"
+            , "       /momo"
             , "/a"
             , "/a.tmp"
             , "/a/b/"
             , "/a/b/c.tmp"
             , "/a/b/c.x.y.z"
-            , "/a/b/c.x.y.z              "  # spaces
-            , "/a/b/c.x.y.z         "  # tabs
+            , "/a/b/c.x.y.z              "
+            , "/a/b/c.x.y.z         "
         ]
 
         self.check_errors(compiled_regex=FilesDirFilth.regex, cases=cases,

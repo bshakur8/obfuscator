@@ -3,23 +3,19 @@ import argparse
 import sys
 
 from strategy import utils
-from strategy.hybrid import ObfuscateHybrid
+from strategy.enums import StrategyTypes
+from strategy.hybrids import ObfuscateHybrid, ObfuscateHybridSplit
 from strategy.low_level import ObfuscateLowLevel
 from strategy.split_and_merge import ObfuscateSplitAndMerge
 from strategy.split_in_place import ObfuscateInplace, ObfuscateSplitInPlace
 from strategy.workers_pool import WorkersPool
 
-IN_PLACE = "in_place"
-SAM = "split_merge"
-SAP = "split_in_place"
-LOW_LEVEL = "low_level"
-HYBRID = "hybrid"
-
-OBFUSCATION_METHODS_FACTORY = {IN_PLACE: ObfuscateInplace,
-                               SAM: ObfuscateSplitAndMerge,
-                               SAP: ObfuscateSplitInPlace,
-                               LOW_LEVEL: ObfuscateLowLevel,
-                               HYBRID: ObfuscateHybrid}
+OBFUSCATION_METHODS_FACTORY = {StrategyTypes.IN_PLACE: ObfuscateInplace,
+                               StrategyTypes.SAM: ObfuscateSplitAndMerge,
+                               StrategyTypes.SAP: ObfuscateSplitInPlace,
+                               StrategyTypes.LOW_LEVEL: ObfuscateLowLevel,
+                               StrategyTypes.HYBRID: ObfuscateHybrid,
+                               StrategyTypes.HYBRID_SPLIT: ObfuscateHybridSplit}
 
 SIZE_TO_SPLIT_IN_BYTES = 5 * 1024 * 1024  # in bytes - 5 MB
 
@@ -36,7 +32,7 @@ class ObfuscateManager:
         :param args: Argument parser
         """
         utils.logger.debug(f"args: {args.__dict__}")
-        strategy_obj = OBFUSCATION_METHODS_FACTORY[args.strategy](args=args)
+        strategy_obj = OBFUSCATION_METHODS_FACTORY[StrategyTypes(args.strategy)](args=args)
         utils.logger.info(strategy_obj)
 
         self._strategy = strategy_obj.run
@@ -67,8 +63,8 @@ def get_args_parser(test=False):
     parser.add_argument("-w", "--workers", dest="workers", type=utils.IntRange(imin=1),
                         default=None,  # decided by pool type class
                         required=False, help="Number of files to obfuscate in parallel.")
-    parser.add_argument("--strategy", dest="strategy", choices=list(OBFUSCATION_METHODS_FACTORY.keys()), type=str,
-                        required=False, default=IN_PLACE, help="Minimum file size to split, in bytes")
+    parser.add_argument("--strategy", dest="strategy", choices=StrategyTypes.names(), type=str,
+                        required=False, default=StrategyTypes.HYBRID.value, help="Strategy to run")
     parser.add_argument("-m", "--min-split-size-in-bytes", dest="min_split_size_in_bytes", type=utils.IntRange(imin=1),
                         required=False, default=SIZE_TO_SPLIT_IN_BYTES,
                         help="Minimum file size to split, in bytes")
@@ -90,10 +86,12 @@ def get_args_parser(test=False):
                         help="Explain what is being done")
     parser.add_argument("--debug", dest="debug", default=False, required=False, action="store_true",
                         help="Debug mode: no parallel obfuscation")
+    parser.add_argument("--debug-prints", dest="debug_prints", default=False, required=False, action="store_true",
+                        help="Debug mode: Add debug prints")
     parser.add_argument("--sed", dest="sed", default="sed -i", required=False,
                         help="sed argument")
     parser.add_argument("--grep", dest="grep", default="grep -Ewo", required=False,
-                        help="sed argument")  # rg -ioe
+                        help="grep argument: rg -ioe, grep -Pwo")
     return parser
 
 

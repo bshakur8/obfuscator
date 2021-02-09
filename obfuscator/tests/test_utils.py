@@ -72,7 +72,8 @@ class TestUtils(unittest.TestCase):
             for idx, part_file in enumerate(file_parts):
                 prefix = f"{os.path.basename(part_file)}{utils.FILE_PREFIX}"
                 new_folder_name = utils.get_folders_difference(filename=part_file, folder=self.a2_folder)
-                tmp_fd, abs_tmp_path = mkstemp(dir=new_folder_name, text=True, prefix=prefix, suffix=utils.NEW_FILE_SUFFIX)
+                tmp_fd, abs_tmp_path = mkstemp(dir=new_folder_name, text=True, prefix=prefix,
+                                               suffix=utils.NEW_FILE_SUFFIX)
                 new_files.append(abs_tmp_path)
 
             new_files = sorted(new_files, key=utils.sort_func)
@@ -87,13 +88,13 @@ class TestUtils(unittest.TestCase):
             for f in new_files + file_parts + [output_file]:
                 try:
                     os.remove(f)
-                except:
+                except OSError:
                     pass
 
     def test__get_txt_files(self):
         # must be last test
         text_files = self.get_text_files()
-        self.assertEqual(len(text_files), 4)
+        self.assertEqual(len(text_files), 5)
         self.assertIn(os.path.join(self.test_logs_dir, "regular.log"), text_files)
         self.assertIn(os.path.join(self.a2_folder, "file_in_a2"), text_files)
 

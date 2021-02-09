@@ -1,6 +1,7 @@
 from unittest import TestCase
 
-from main import get_args_parser, IN_PLACE
+from main import get_args_parser
+from strategy.enums import StrategyTypes
 
 utils_kwargs = {"log_to_debug": False}
 
@@ -22,7 +23,7 @@ class TestMain(TestCase):
                   "log_folder": "/tmp/",
                   "verbose": False,
                   "workers": None,
-                  "strategy": IN_PLACE,
+                  "strategy": StrategyTypes.HYBRID.value,
                   "ignore_hint": None,
                   "measure_time": False,
                   "pool_type": None,
