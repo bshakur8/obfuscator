@@ -2,19 +2,16 @@ FROM python:3.6-alpine
 MAINTAINER Bhaa Shakur
 
 ENV PYTHONUNBUFFERED 1
-ENV PYTHONPATH "${PYTHONPATH}:/obfuscator/obfuscator"
+ENV PYTHONPATH "${PYTHONPATH}:/usr/src/app/obfuscator"
 
 
-RUN mkdir /obfuscator
+WORKDIR /usr/src/app
+COPY . .
 
-COPY ./ /obfuscator/
-WORKDIR /obfuscator
-
-COPY ./requirements.txt /obfuscator/requirements.txt
 RUN apk add --update --no-cache --virtual .tmp-build-deps \
         gcc libc-dev linux-headers
 
-RUN pip install -r /obfuscator/requirements.txt
+RUN pip install -r ./requirements.txt
 
-RUN adduser -D dockuser && chown -R dockuser /obfuscator
-USER dockuser
+RUN chmod +x ./obfuscator/main.py
+ENTRYPOINT ["./obfuscator/main.py"]

@@ -41,10 +41,15 @@ class ObfuscateLowLevel(FileSplitters):
             ],
         ]
 
+    def pre_one(self, src_file):
+        src_file, _, filth_to_segment = self.orchestrate_iterator(src_file, check_with_threshold=False)
+        self.file_to_filth_segment[src_file] = filth_to_segment
+        return [src_file]
+
     def obfuscate_one(self, *args, **kwargs):
         abs_file, filth_to_segment = args[0]
         self._print(abs_file)
-
+        filth_to_segment = filth_to_segment or self.file_to_filth_segment[abs_file]
         cmds = []
         for filth, segments in filth_to_segment.items():
             for segment in segments:
@@ -58,7 +63,7 @@ class ObfuscateLowLevel(FileSplitters):
             _ = utils.run_local_cmd(cmd=cmd, **self._log_kwargs)
         return abs_file
 
-    def orchestrate_iterator(self, src_file, *args, **kwargs):
+    def orchestrate_iterator(self, src_file, check_with_threshold=True, *args, **kwargs):
         assert self.low_level_filths
         grep = f'{self.args.grep} "{{r}}" {src_file} | sort -u'
 
@@ -71,7 +76,7 @@ class ObfuscateLowLevel(FileSplitters):
                 total_segments += len(segments)
                 filth_to_segment[filth] += segments
 
-                if total_segments >= self.threshold:
+                if check_with_threshold and total_segments >= self.threshold:
                     utils.logger.info(f"LowLevel: Exclude {src_file}: {total_segments} segments")
                     return src_file, False, {}
 
@@ -82,7 +87,6 @@ class ObfuscateLowLevel(FileSplitters):
                 segments = sorted(set(self.clean_suffix(seg, "'") for seg in segments), key=lambda x: -len(x))
                 filth_to_segment[filth] = segments
 
-            self.file_to_filth_segment[src_file] = filth_to_segment
             return src_file, True, dict(filth_to_segment)
 
         # No segments - no need to handle

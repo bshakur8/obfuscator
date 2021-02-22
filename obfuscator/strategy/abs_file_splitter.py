@@ -56,7 +56,8 @@ class FileSplitters(metaclass=ABCMeta):
             utils.logger.warning(str(e))
             rc = RCEnum.IGNORED
 
-        except Exception:
+        except (BaseException,):
+            # BaseException: to catch also KeyboardInterrupt
             utils.logger.exception(f"FAILED")
             rc = RCEnum.FAILURE
         finally:
@@ -72,7 +73,7 @@ class FileSplitters(metaclass=ABCMeta):
         pass
 
     def orchestrate_run(self):
-        raise NotImplementedError("Not Supported")
+        raise NotImplemented("Not Supported")
 
     def orchestrate_iterator(self, src_file, *args, **kwargs):
         return src_file, random.choice((True, False)), None
@@ -100,8 +101,8 @@ class FileSplitters(metaclass=ABCMeta):
 
     def obfuscate_all(self, pool, files_to_obfuscate, *args):
         # If 1 worker or one file to handle: run single process
-        listargs = [(f, utils.itemgetter(args, 0, dict)) for f in files_to_obfuscate]
-        return pool.map(self.obfuscate_one, listargs)
+        args = [(f, utils.itemgetter(args, 0, dict)) for f in files_to_obfuscate]
+        return pool.map(self.obfuscate_one, args)
 
     def pre_one(self, src_file):
         return [src_file]
@@ -125,13 +126,13 @@ class ObfuscateGenericHybrid(FileSplitters):
             pool.map(utils.dummy, (o.pre_all for o in self.hybrid.strategies.values()))
 
     def single_obfuscate(self, abs_file, *args, **kwargs):
-        raise NotImplementedError()
+        assert False
 
     def obfuscate(self):
         return self.hybrid.orchestrate_run()
 
     def obfuscate_one(self, *args, **kwargs):
-        raise NotImplementedError()
+        assert False
 
     def post_all(self):
         super().post_all()
@@ -154,10 +155,10 @@ class AbsHybrid(FileSplitters):
         return ObfuscateGenericHybrid(self.args, hybrid=self)
 
     def obfuscate_one(self, *args, **kwargs):
-        raise NotImplementedError()
+        assert False
 
     def single_obfuscate(self, abs_file, *args, **kwargs):
-        raise NotImplementedError()
+        assert False
 
     def pre_all(self):
         self.generic.raw_files = self.raw_files
