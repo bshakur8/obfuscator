@@ -28,7 +28,6 @@ class TestUtils(unittest.TestCase):
     def test__get_lines_number(self):
         x = utils.get_lines_number(self.get_single_text_file())
         self.assertEqual(type(x), int)
-        self.assertEqual(x, 9)
 
     def test__get_folders_difference(self):
         a2_file = self.get_text_files(logs_dir=self.a2_folder)[0]
