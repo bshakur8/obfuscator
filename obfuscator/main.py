@@ -31,6 +31,7 @@ class ObfuscateManager:
         """
         :param args: Argument parser
         """
+        utils.init_logger(args)
         utils.logger.debug(f"args: {args.__dict__}")
         strategy_obj = OBFUSCATION_METHODS_FACTORY[StrategyTypes(args.strategy)](args=args)
         utils.logger.info(strategy_obj)
@@ -98,7 +99,6 @@ def get_args_parser(test=False):
 def main():
     parser = get_args_parser()
     args = parser.parse_args()
-    utils.init_logger(args)
     return ObfuscateManager(args).run()
 
 

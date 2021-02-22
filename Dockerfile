@@ -2,7 +2,7 @@ FROM python:3.6-alpine
 MAINTAINER Bhaa Shakur
 
 ENV PYTHONUNBUFFERED 1
-ENV PYTHONPATH "/obfuscator/:${PYTHONPATH}"
+ENV PYTHONPATH "${PYTHONPATH}:/obfuscator/obfuscator"
 
 
 RUN mkdir /obfuscator
