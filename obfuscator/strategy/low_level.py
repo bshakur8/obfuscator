@@ -58,14 +58,16 @@ class ObfuscateLowLevel(FileSplitters):
                     segment = segment.replace(t, fr'\{t}')
                 cmds.append(f's{SED_SEPARATOR}{segment}{SED_SEPARATOR}{obf_segment}{SED_SEPARATOR}g')
 
-        for chunk in utils.chunkify(cmds, size=min(50, int(self.args.threshold / 5))):
-            cmd = "{} '{}' {}".format(self.args.sed, " ; ".join(chunk), abs_file)
-            _ = utils.run_local_cmd(cmd=cmd, **self._log_kwargs)
+        cmds = ("{} '{}' {}".format(self.args.replacer, " ; ".join(chunk), abs_file)
+                for chunk in utils.chunkify(cmds, min(10, int(self.args.threshold / 5 / self.args.workers))))
+        with self.pool_function(self.args.workers) as pool:
+            pool.map(utils.run_local_cmd, cmds)
+
         return abs_file
 
     def orchestrate_iterator(self, src_file, check_with_threshold=True, *args, **kwargs):
         assert self.low_level_filths
-        grep = f'{self.args.grep} "{{r}}" {src_file} | sort -u'
+        grep = f'{self.args.searcher} "{{r}}" {src_file} | {self.args.sorter}'
 
         filth_to_segment = defaultdict(list)
         total_segments = 0

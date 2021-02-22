@@ -89,10 +89,9 @@ def get_args_parser(test=False):
                         help="Debug mode: no parallel obfuscation")
     parser.add_argument("--debug-prints", dest="debug_prints", default=False, required=False, action="store_true",
                         help="Debug mode: Add debug prints")
-    parser.add_argument("--sed", dest="sed", default="sed -i", required=False,
-                        help="sed argument")
-    parser.add_argument("--grep", dest="grep", default="grep -Ewo", required=False,
-                        help="grep argument: rg -ioe, grep -Pwo")
+    parser.add_argument("--replacer", default="sed -i", required=False, help="sed argument: sed -i, perl -pi.bak -e")
+    parser.add_argument("--searcher", default="rg -ioe", required=False, help="grep argument: grep -Ewo, grep -Pwo")
+    parser.add_argument("--sorter", default="sort -u", required=False, help="sort argument: sort -u")
     return parser
 
 

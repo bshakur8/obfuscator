@@ -149,6 +149,25 @@ class MultiProcessPipeline:
                 self.writeq.put(None)
 
 
+class NoDaemonProcess(multiprocessing.Process):
+    # make 'daemon' attribute always return False
+    def _get_daemon(self):
+        return False
+
+    def _set_daemon(self, value):
+        pass
+
+    daemon = property(_get_daemon, _set_daemon)
+
+
+class CustomMultiProcessPool(multiprocessing.pool.Pool):
+    """
+    We sub-class multiprocessing.pool.Pool instead of multiprocessing.Pool
+    because the latter is only a wrapper function, not a proper class.
+    """
+    Process = NoDaemonProcess
+
+
 class _WorkersPool:
     """
     Wrapper to all kinds of parallel execution pools
@@ -248,7 +267,7 @@ class _WorkersPool:
     @classmethod
     def multiprocess(cls, workers=None):
         assert Pool, "Please install multiprocessing"
-        return WorkersPool.Executor(Pool, workers or cpu_count())
+        return WorkersPool.Executor(CustomMultiProcessPool, workers or cpu_count())
 
     @classmethod
     def greenlets(cls, workers=None):
