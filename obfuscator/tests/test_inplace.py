@@ -18,7 +18,9 @@ class TestInPlace(unittest.TestCase):
     def setUpClass(cls):
         utils.init_logger()
         cls.dir_name = os.path.dirname(__file__)
-        cls.obfuscate_folder = f"{cls.dir_name}/logs_dir/Obfuscate/"
+        assert os.path.exists(cls.dir_name)
+        cls.obfuscate_folder = f"{cls.dir_name}/logs_dir/"
+        assert os.path.exists(cls.obfuscate_folder)
 
     @classmethod
     def get_args(cls):
@@ -45,7 +47,7 @@ class TestInPlace(unittest.TestCase):
             shutil.copyfile(args.input_folder, new_file)
             files = [new_file]
         else:
-            assert False
+            assert False, f"args.input_folder={args.input_folder}"
         utils.logger.info(f"files={files}")
         return files
 
@@ -63,7 +65,7 @@ class TestInPlace(unittest.TestCase):
                 content = fd.readlines()
 
             errs = []
-            for segment in ['{{IP:PORT-32fc1}}', '{{MAC_ADDR-4cb8f}}', '{{MAC_ADDR-233a2}', '{{IP:PORT-3a14d}}']:
+            for segment in ['{{IPV4-8341c}}', '{{MAC-ADDR-72994}}', '{{MAC-ADDR-6de52}', '{IPV4-25bee}}']:
                 for line in content:
                     if segment in line:
                         break
@@ -72,8 +74,7 @@ class TestInPlace(unittest.TestCase):
 
             self.assertListEqual(errs, [])
         finally:
-            pass
-            # os.remove(result_file)
+            shutil.rmtree(args.output_folder)
 
     def _test_inplace(self):
         args = self.get_args()

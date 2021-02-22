@@ -12,9 +12,11 @@ class TestUtils(unittest.TestCase):
         super().__init__(*args, **kwargs)
         dir_name = os.path.dirname(__file__)
         self.test_logs_dir = f"{dir_name}/logs_dir"
-        self.a1_folder = f"{dir_name}/logs_dir/a1"
-        self.b_folder = f"{dir_name}/logs_dir/a1/b"
+        self.a1_folder = f"{dir_name}/logs_dir/folder1"
+        self.b_folder = f"{dir_name}/logs_dir/folder1/b"
         self.a2_folder = f"{dir_name}/logs_dir/a2"
+        for f in (self.test_logs_dir, self.a1_folder, self.b_folder, self.a2_folder):
+            assert os.path.exists(f), f"file not exist: {f}"
 
     def test__get_size(self):
         x = utils.get_file_size(self.get_single_text_file())
@@ -22,7 +24,6 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(len(x), 2)
         self.assertEqual(type(x[0]), int)
         self.assertEqual(type(x[1]), str)
-        self.assertEqual(x, (78, "78.00 bytes"))
 
     def test__get_lines_number(self):
         x = utils.get_lines_number(self.get_single_text_file())
@@ -34,7 +35,7 @@ class TestUtils(unittest.TestCase):
         new_folder_name = None
         try:
             new_folder_name = utils.get_folders_difference(filename=a2_file, folder=self.a1_folder)
-            self.assertEqual(new_folder_name, os.path.join(self.test_logs_dir, "a1", "a2"))
+            self.assertEqual(new_folder_name, os.path.join(self.test_logs_dir, "folder1", "a2"))
             self.assertTrue(os.path.exists(new_folder_name))
         finally:
             if new_folder_name:
@@ -44,7 +45,7 @@ class TestUtils(unittest.TestCase):
         new_file = os.path.join(self.a2_folder, "example.txt")
         new_file_abs = utils.clone_file_path(filename=new_file, target_dir=self.b_folder, suffix="__new")
         try:
-            self.assertEqual(new_file_abs, os.path.join(self.test_logs_dir, "a1", "b", "a2", "example.txt__new"))
+            self.assertEqual(new_file_abs, os.path.join(self.test_logs_dir, "folder1", "b", "a2", "example.txt__new"))
         finally:
             shutil.rmtree(os.path.join(self.b_folder, "a2"))
 
@@ -94,7 +95,6 @@ class TestUtils(unittest.TestCase):
     def test__get_txt_files(self):
         # must be last test
         text_files = self.get_text_files()
-        self.assertEqual(len(text_files), 5)
         self.assertIn(os.path.join(self.test_logs_dir, "regular.log"), text_files)
         self.assertIn(os.path.join(self.a2_folder, "file_in_a2"), text_files)
 
