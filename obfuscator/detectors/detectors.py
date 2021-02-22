@@ -29,9 +29,8 @@ class AbsObfuscatorFilth(RegexFilth):
         return utils.hash_string("".join((str(x) for x in (self.type, self.salt))))
 
     def replace_with(self, **kwargs):
-        return self.prefix + \
-               u'%s-%s' % (self.placeholder, utils.hash_string(f"{self._const_hash}{self.text.lower()}")) \
-               + self.suffix
+        string = u'%s-%s' % (self.placeholder, utils.hash_string(f"{self._const_hash}{self.text.lower()}"))
+        return self.prefix + string + self.suffix
 
 
 class LowLevelFilth:

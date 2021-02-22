@@ -72,7 +72,7 @@ class FileSplitters(metaclass=ABCMeta):
         pass
 
     def orchestrate_run(self):
-        raise NotImplemented("Not Supported")
+        raise NotImplementedError("Not Supported")
 
     def orchestrate_iterator(self, src_file, *args, **kwargs):
         return src_file, random.choice((True, False)), None
@@ -125,13 +125,13 @@ class ObfuscateGenericHybrid(FileSplitters):
             pool.map(utils.dummy, (o.pre_all for o in self.hybrid.strategies.values()))
 
     def single_obfuscate(self, abs_file, *args, **kwargs):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def obfuscate(self):
         return self.hybrid.orchestrate_run()
 
     def obfuscate_one(self, *args, **kwargs):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def post_all(self):
         super().post_all()
@@ -154,10 +154,10 @@ class AbsHybrid(FileSplitters):
         return ObfuscateGenericHybrid(self.args, hybrid=self)
 
     def obfuscate_one(self, *args, **kwargs):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def single_obfuscate(self, abs_file, *args, **kwargs):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     def pre_all(self):
         self.generic.raw_files = self.raw_files
