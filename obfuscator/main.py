@@ -5,7 +5,7 @@ import sys
 from strategy import utils
 from strategy.enums import StrategyTypes
 from strategy.hybrids import ObfuscateHybrid, ObfuscateHybridSplit
-from strategy.low_level import ObfuscateLowLevel
+from strategy.low_level import ObfuscateLowLevel, ObfuscateLowLevelNoID
 from strategy.split_and_merge import ObfuscateSplitAndMerge
 from strategy.split_in_place import ObfuscateInplace, ObfuscateSplitInPlace
 from strategy.workers_pool import WorkersPool
@@ -15,7 +15,9 @@ OBFUSCATION_METHODS_FACTORY = {StrategyTypes.IN_PLACE: ObfuscateInplace,
                                StrategyTypes.SAP: ObfuscateSplitInPlace,
                                StrategyTypes.LOW_LEVEL: ObfuscateLowLevel,
                                StrategyTypes.HYBRID: ObfuscateHybrid,
-                               StrategyTypes.HYBRID_SPLIT: ObfuscateHybridSplit}
+                               StrategyTypes.HYBRID_SPLIT: ObfuscateHybridSplit,
+                               StrategyTypes.NO_ID: ObfuscateLowLevelNoID
+                               }
 
 SIZE_TO_SPLIT_IN_BYTES = 5 * 1024 * 1024  # in bytes - 5 MB
 

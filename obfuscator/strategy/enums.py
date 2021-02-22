@@ -8,6 +8,7 @@ class StrategyTypes(Enum):
     LOW_LEVEL = "low_level"
     HYBRID = "hybrid"
     HYBRID_SPLIT = "hybrid_split"
+    NO_ID = "no_id"
 
     @classmethod
     def names(cls):
