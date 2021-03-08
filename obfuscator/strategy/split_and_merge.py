@@ -94,7 +94,7 @@ class ObfuscateSplitAndMerge(FileSplitters):
                     # clean file and write to new_logs file
                     writer.write(self.scrubber.clean(text=line))
 
-        except Exception:
+        except (Exception,):
             utils.logger.exception(f"Exception in obfuscate_sam._obfuscate_worker")
             # remove failed temp file
             utils.remove_files([abs_tmp_path])

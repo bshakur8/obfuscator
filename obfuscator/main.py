@@ -94,6 +94,7 @@ def get_args_parser(test=False):
     parser.add_argument("--replacer", default="sed -i", required=False, help="sed argument: sed -i, perl -pi.bak -e")
     parser.add_argument("--searcher", default="rg -ioe", required=False, help="grep argument: grep -Ewo, grep -Pwo")
     parser.add_argument("--sorter", default="sort -u", required=False, help="sort argument: sort -u")
+    parser.add_argument("--ripgrep-path", default=None, required=False, help="path to ripgrep. Default use default rg")
     return parser
 
 

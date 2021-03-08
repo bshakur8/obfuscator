@@ -1,5 +1,7 @@
 import os
+import platform
 from collections import defaultdict
+from functools import lru_cache
 
 from detectors.detectors import LowLevelFilth, MyCredentialFilth
 from strategy import utils
@@ -24,7 +26,7 @@ class ObfuscateLowLevel(FileSplitters):
 
     def pre_all(self):
         super().pre_all()
-        ip_regex = r"([1-9]{1,3}\.([0-9]{1,3}[\.]){2}[0-9]{1,3})"
+        ip_regex = r"(25[0-5]|2[0-4][0-9]|[0-1]?[0-9]?[0-9])(\.(25[0-5]|2[0-4][0-9]|[0-1]?[0-9]?[0-9])){3}"
         file_regex = r"""(/[^ \"']+)+"""
         credentials_regex = MyCredentialFilth.regex_str
         mac_addr_regex = r"([a-f0-9A-F]{2}:){5}[a-f0-9A-F]{2}"
@@ -104,6 +106,18 @@ class ObfuscateUsingRipGrep(ObfuscateLowLevel):
      - Suitable for small files and low CPU and memory resources
     """
 
+    @property
+    @lru_cache(1)
+    def ripgrep(self):
+        if self.args.ripgrep_path:
+            return self.args.ripgrep_path
+        _platform = platform.platform().lower()
+        if "ubuntu" in _platform:
+            return "./rg_ubuntu"
+        if "centos" in _platform:
+            return "./rg_centos"
+        raise OSError("Unsupported OS")
+
     def __init__(self, args, name=None):
         super().__init__(args, name=name or "RipGrep")
 
@@ -125,7 +139,7 @@ class ObfuscateUsingRipGrep(ObfuscateLowLevel):
         dirname = os.path.dirname(src_file)
         self._print(src_file)
         # local rg
-        replace_cmd = f'./rg --passthru -ie "{{r}}" --replace {{p}} {src_file} ' \
+        replace_cmd = f'{self.ripgrep} --passthru -ie "{{r}}" --replace {{p}} {src_file} ' \
                       f'2>&1 | tee {{t}} > /dev/null && mv {{t}} {src_file}'
 
         for filths in self.low_level_filths:

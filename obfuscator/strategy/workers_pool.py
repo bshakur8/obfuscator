@@ -8,6 +8,11 @@ from multiprocessing.queues import JoinableQueue
 
 from strategy import utils
 
+
+def _custom_cpu_count(*args, **kwargs):
+    return 1
+
+
 try:
     from concurrent.futures.thread import ThreadPoolExecutor
 except ImportError:
@@ -16,7 +21,7 @@ try:
     from multiprocessing import Pool, cpu_count
 except ImportError:
     Pool = None
-    cpu_count = lambda: 1
+    cpu_count = _custom_cpu_count
 try:
     from multiprocessing.pool import ThreadPool
 except ImportError:

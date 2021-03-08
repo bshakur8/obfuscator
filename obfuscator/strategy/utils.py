@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import argparse
-import hashlib
+import uuid
 import logging
 import math
 import operator
@@ -438,8 +438,8 @@ class PathType:
 
 
 @lru_cache(100_000)
-def hash_string(string, size=5):
-    return hashlib.md5(str(string).encode()).hexdigest()[:size]
+def hash_string(string):
+    return str(uuid.uuid5(uuid.NAMESPACE_OID, string))[:8]
 
 
 def itemgetter(x, y, type_needed):
