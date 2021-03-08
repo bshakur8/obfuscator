@@ -8,7 +8,7 @@ class StrategyTypes(Enum):
     LOW_LEVEL = "low_level"
     HYBRID = "hybrid"
     HYBRID_SPLIT = "hybrid_split"
-    NO_ID = "no_id"
+    RIPGREP = "ripgrep"
 
     @classmethod
     def names(cls):
@@ -19,3 +19,10 @@ class RCEnum(Enum):
     SUCCESS = 0
     IGNORED = 1
     FAILURE = 2
+
+
+class Segments(Enum):
+    FILE_DIR = "FILE"
+    CREDENTIALS = "CRED"
+    MAC_ADDR = "MAC"
+    IP = "IP"

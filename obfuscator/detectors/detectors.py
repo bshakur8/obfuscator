@@ -5,6 +5,7 @@ from scrubadub.detectors.base import RegexDetector
 from scrubadub.filth import RegexFilth
 
 from strategy import utils
+from strategy.enums import Segments
 
 
 class _ObfDetectorsIterator:
@@ -64,24 +65,24 @@ reg = r"""\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0
 
 
 class IPv4Filth(AbsObfuscatorFilth):
-    type = 'ipv4'
+    type = Segments.IP.value
     # valid: IP:port, IP/subnet
     # 555.11.516.9910101 is not a valid IP
     regex = re.compile(reg)
 
 
 class FilesDirFilth(AbsObfuscatorFilth):
-    type = "file-dir"
+    type = Segments.FILE_DIR.value
     regex = re.compile(r"\B/[^ :\t\n]+\b")
 
 
 class MACFilth(AbsObfuscatorFilth):
-    type = "mac-addr"
+    type = Segments.MAC_ADDR.value
     regex = re.compile("([0-9a-fA-F]{2}[:]){5}([0-9a-fA-F]{2})")
 
 
 class MyCredentialFilth(AbsObfuscatorFilth):
-    type = "credentials"
+    type = Segments.CREDENTIALS.value
     CREDENTIALS_KEYWORDS = [
         "username", "user", "login", "password", "pass",  # defaults
         "root_password", "root_username",  # root

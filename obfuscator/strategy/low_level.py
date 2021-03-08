@@ -4,6 +4,7 @@ from collections import defaultdict
 from detectors.detectors import LowLevelFilth, MyCredentialFilth
 from strategy import utils
 from strategy.abs_file_splitter import FileSplitters
+from strategy.enums import Segments
 
 SED_SEPARATOR = '@'
 SED_FORBIDDEN_CHARS = "[]*^" + SED_SEPARATOR
@@ -33,12 +34,12 @@ class ObfuscateLowLevel(FileSplitters):
         # Order is important! ip can be inside a file dir but not vise-versa
         self.low_level_filths = [
             [
-                LowLevelFilth(placeholder="FILE-DIR", regex=file_regex, **kwargs),
-                LowLevelFilth(placeholder="CREDENTIALS", regex=credentials_regex, **kwargs),
-                LowLevelFilth(placeholder="MAC-ADDR", regex=mac_addr_regex, **kwargs),
+                LowLevelFilth(placeholder=Segments.FILE_DIR.value, regex=file_regex, **kwargs),
+                LowLevelFilth(placeholder=Segments.CREDENTIALS.value, regex=credentials_regex, **kwargs),
+                LowLevelFilth(placeholder=Segments.MAC_ADDR.value, regex=mac_addr_regex, **kwargs),
             ],
             [
-                LowLevelFilth(placeholder="IP-PORT", regex=ip_regex, **kwargs),
+                LowLevelFilth(placeholder=Segments.IP.value, regex=ip_regex, **kwargs),
             ],
         ]
 
@@ -96,7 +97,7 @@ class ObfuscateLowLevel(FileSplitters):
         return src_file, None, {}
 
 
-class ObfuscateLowLevelNoID(ObfuscateLowLevel):
+class ObfuscateUsingRipGrep(ObfuscateLowLevel):
     """
     Obfuscate all files in place but not giving them IDs:
      - No files splits
@@ -104,21 +105,35 @@ class ObfuscateLowLevelNoID(ObfuscateLowLevel):
     """
 
     def __init__(self, args, name=None):
-        super().__init__(args, name=name or "LowLevelNoID")
+        super().__init__(args, name=name or "RipGrep")
 
     def pre_one(self, src_file):
         return [src_file]
 
+    def obfuscate(self):
+        """Obfuscate input files:
+         - If there's only one workers or one file: Run in single process without multiprocessing Pool
+        """
+        if not self.raw_files:
+            raise utils.NoTextFilesFound(f"{self.__str__()} No files to obfuscate")
+
+        with self.pool_function(self.args.workers) as pool:
+            pool.map(self.obfuscate_one, self.raw_files)
+
     def obfuscate_one(self, *args, **kwargs):
-        abs_file, _ = args[0]
-        dirname = os.path.dirname(abs_file)
-        self._print(abs_file)
-        base_cmd = f'{self.args.searcher} --passthru -ie "{{r}}" --replace {{p}} {abs_file} 2>&1 | tee {{t}} > /dev/null && mv {{t}} {abs_file}'
+        src_file = args[0]
+        dirname = os.path.dirname(src_file)
+        self._print(src_file)
+        # local rg
+        replace_cmd = f'./rg --passthru -ie "{{r}}" --replace {{p}} {src_file} ' \
+                      f'2>&1 | tee {{t}} > /dev/null && mv {{t}} {src_file}'
 
         for filths in self.low_level_filths:
             for filth in filths:
-                placeholder = "{{" + filth.placeholder + "}}"
-                tmp_file = os.path.join(dirname, f"{abs_file}__{filth.placeholder.lower().replace('-', '_')}.tmp")
-                cmd = base_cmd.format(r=filth.regex, p=placeholder, t=tmp_file)
+                utils.logger.debug(f"Obfuscate {filth.placeholder} segments of '{src_file}'")
+                tmp_file = os.path.join(dirname, f"{src_file}__{filth.placeholder.lower().replace('-', '_')}.tmp")
+                cmd = replace_cmd.format(r=filth.regex, p="{{" + filth.placeholder, t=tmp_file)
                 utils.run_local_cmd(cmd=cmd, **self._log_kwargs)
-        return abs_file
+                utils.logger.debug(f"Done obfuscate {filth.placeholder}: '{src_file}'")
+
+        return src_file
