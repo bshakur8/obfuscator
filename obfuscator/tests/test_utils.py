@@ -7,7 +7,6 @@ from strategy import utils
 
 
 class TestUtils(unittest.TestCase):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         dir_name = os.path.dirname(__file__)
@@ -33,8 +32,12 @@ class TestUtils(unittest.TestCase):
         a2_file = self.get_text_files(logs_dir=self.a2_folder)[0]
         new_folder_name = None
         try:
-            new_folder_name = utils.get_folders_difference(filename=a2_file, folder=self.a1_folder)
-            self.assertEqual(new_folder_name, os.path.join(self.test_logs_dir, "folder1", "a2"))
+            new_folder_name = utils.get_folders_difference(
+                filename=a2_file, folder=self.a1_folder
+            )
+            self.assertEqual(
+                new_folder_name, os.path.join(self.test_logs_dir, "folder1", "a2")
+            )
             self.assertTrue(os.path.exists(new_folder_name))
         finally:
             if new_folder_name:
@@ -42,9 +45,16 @@ class TestUtils(unittest.TestCase):
 
     def test__clone_file(self):
         new_file = os.path.join(self.a2_folder, "example.txt")
-        new_file_abs = utils.clone_file_path(filename=new_file, target_dir=self.b_folder, suffix="__new")
+        new_file_abs = utils.clone_file_path(
+            filename=new_file, target_dir=self.b_folder, suffix="__new"
+        )
         try:
-            self.assertEqual(new_file_abs, os.path.join(self.test_logs_dir, "folder1", "b", "a2", "example.txt__new"))
+            self.assertEqual(
+                new_file_abs,
+                os.path.join(
+                    self.test_logs_dir, "folder1", "b", "a2", "example.txt__new"
+                ),
+            )
         finally:
             shutil.rmtree(os.path.join(self.b_folder, "a2"))
 
@@ -53,7 +63,9 @@ class TestUtils(unittest.TestCase):
         file_parts = []
         num_parts = 3
         try:
-            file_parts = utils.split_file(path=f, num_parts=num_parts, output_folder=self.a2_folder)
+            file_parts = utils.split_file(
+                path=f, num_parts=num_parts, output_folder=self.a2_folder
+            )
             self.assertEqual(len(file_parts), num_parts)
             for p in file_parts:
                 self.assertTrue(utils.PART_SUFFIX in p)
@@ -68,12 +80,20 @@ class TestUtils(unittest.TestCase):
         new_files = []
         num_parts = 3
         try:
-            file_parts = utils.split_file(path=text_file, num_parts=num_parts, output_folder=self.a2_folder)
+            file_parts = utils.split_file(
+                path=text_file, num_parts=num_parts, output_folder=self.a2_folder
+            )
             for idx, part_file in enumerate(file_parts):
                 prefix = f"{os.path.basename(part_file)}{utils.FILE_PREFIX}"
-                new_folder_name = utils.get_folders_difference(filename=part_file, folder=self.a2_folder)
-                tmp_fd, abs_tmp_path = mkstemp(dir=new_folder_name, text=True, prefix=prefix,
-                                               suffix=utils.NEW_FILE_SUFFIX)
+                new_folder_name = utils.get_folders_difference(
+                    filename=part_file, folder=self.a2_folder
+                )
+                tmp_fd, abs_tmp_path = mkstemp(
+                    dir=new_folder_name,
+                    text=True,
+                    prefix=prefix,
+                    suffix=utils.NEW_FILE_SUFFIX,
+                )
                 new_files.append(abs_tmp_path)
 
             new_files = sorted(new_files, key=utils.sort_func)
@@ -83,7 +103,9 @@ class TestUtils(unittest.TestCase):
                 self.assertEqual(int(f.split(utils.FILE_PREFIX)[-3]), idx)
 
             utils.combine_files(files=file_parts, output_file=output_file)
-            self.assertEqual(utils.get_file_size(output_file), utils.get_file_size(text_file))
+            self.assertEqual(
+                utils.get_file_size(output_file), utils.get_file_size(text_file)
+            )
         finally:
             for f in new_files + file_parts + [output_file]:
                 try:

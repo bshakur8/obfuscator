@@ -10,30 +10,35 @@ DUMMY_SALT = "1234"
 
 
 class TestMainArgs(unittest.TestCase):
-    MINIMUM_GOOD_CMD = f"-i {FOUND_FOLDER} -o {FOUND_FOLDER} -s {DUMMY_SALT}"  # DO NOT CHANGE
+    MINIMUM_GOOD_CMD = (
+        f"-i {FOUND_FOLDER} -o {FOUND_FOLDER} -s {DUMMY_SALT}"  # DO NOT CHANGE
+    )
     parser = get_args_parser()
 
     def test_args_defaults(self):
-        kwargs = {"input_folder": "/tmp/",
-                  "output_folder": "/tmp/",
-                  "salt": DUMMY_SALT,
-                  "log_folder": "/tmp/",
-                  "verbose": False,
-                  "workers": None,
-                  "strategy": StrategyTypes.HYBRID.value,
-                  "ignore_hint": None,
-                  "measure_time": False,
-                  "pool_type": None,
-                  "remove_original": False
-                  }
+        kwargs = {
+            "input_folder": "/tmp/",
+            "output_folder": "/tmp/",
+            "salt": DUMMY_SALT,
+            "log_folder": "/tmp/",
+            "verbose": False,
+            "workers": None,
+            "strategy": StrategyTypes.HYBRID.value,
+            "ignore_hint": None,
+            "measure_time": False,
+            "pool_type": None,
+            "remove_original": False,
+        }
         args_cmd = f"{self.MINIMUM_GOOD_CMD} --log-folder /tmp"
         parsed_args = self.parser.parse_args(args_cmd.split(" "))
 
         list_err = []
         for arg, expected_res in kwargs.items():
             if getattr(parsed_args, arg) != expected_res:
-                list_err.append(f"=======> Failed with args: {arg}-> expected: '{expected_res}' <=======."
-                                f"Case: {args_cmd}")
+                list_err.append(
+                    f"=======> Failed with args: {arg}-> expected: '{expected_res}' <=======."
+                    f"Case: {args_cmd}"
+                )
 
         if list_err:
             raise AssertionError("\n".join(list_err))
@@ -62,8 +67,10 @@ class TestMainArgs(unittest.TestCase):
             raise AssertionError("\n".join(list_err))
 
     def test_folder_not_exist(self):
-        for cmd in ["-i /_no_way_this_folder_exist -o /out --salt 120 --log_folder /tmp",
-                    "-i /tmp -o /out --salt 120 --log_folder /__no_way_this_folder_exist"]:
+        for cmd in [
+            "-i /_no_way_this_folder_exist -o /out --salt 120 --log_folder /tmp",
+            "-i /tmp -o /out --salt 120 --log_folder /__no_way_this_folder_exist",
+        ]:
             try:
                 _ = self.parser.parse_args(cmd.split(" "))
             except SystemExit as e:

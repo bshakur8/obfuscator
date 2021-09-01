@@ -67,7 +67,7 @@ def run_test(run_name, log_folder, args):
     except Exception:
         utils.logger.exception(f"Exception during to run Pool type: {run_name}")
     finally:
-        utils.logger.info("{0}END - {1}{0}".format('-' * 10, run_name))
+        utils.logger.info("{0}END - {1}{0}".format("-" * 10, run_name))
 
 
 def tester():
@@ -80,5 +80,5 @@ def main():
     tester()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

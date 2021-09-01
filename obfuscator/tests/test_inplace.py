@@ -40,10 +40,15 @@ class TestInPlace(unittest.TestCase):
     @staticmethod
     def _get_files(args):
         if os.path.isdir(args.input_folder):
-            raw_files = [os.path.join(args.input_folder, f) for f in os.listdir(args.input_folder)]
+            raw_files = [
+                os.path.join(args.input_folder, f)
+                for f in os.listdir(args.input_folder)
+            ]
             files = utils.clone_folder(raw_files, args)
         elif os.path.isfile(args.input_folder):
-            new_file = utils.clone_file_path(args.input_folder, target_dir=args.output_folder)
+            new_file = utils.clone_file_path(
+                args.input_folder, target_dir=args.output_folder
+            )
             shutil.copyfile(args.input_folder, new_file)
             files = [new_file]
         else:
@@ -65,7 +70,12 @@ class TestInPlace(unittest.TestCase):
                 content = fd.readlines()
 
             errs = []
-            for segment in ['{{IPV4-8341c}}', '{{MAC-ADDR-72994}}', '{{MAC-ADDR-6de52}', '{IPV4-25bee}}']:
+            for segment in [
+                "{{IPV4-8341c}}",
+                "{{MAC-ADDR-72994}}",
+                "{{MAC-ADDR-6de52}",
+                "{IPV4-25bee}}",
+            ]:
                 for line in content:
                     if segment in line:
                         break

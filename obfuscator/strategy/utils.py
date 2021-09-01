@@ -37,7 +37,7 @@ def init_logger(args=None):
     :param args: argsparse args. Uses 'log_folder' and 'verbose'
     """
     handler = logging.StreamHandler()
-    log_format = u'%(asctime)s [%(levelname)-1s %(process)d %(threadName)s]  %(message)s'
+    log_format = "%(asctime)s [%(levelname)-1s %(process)d %(threadName)s]  %(message)s"
     handler.setFormatter(logging.Formatter(log_format))
     logger.addHandler(handler)
     level = logging.DEBUG
@@ -45,10 +45,17 @@ def init_logger(args=None):
 
     if args:
         if args.log_folder:
-            logging.basicConfig(filename=os.path.join(args.log_folder, "obfuscation_log"), level=logging.DEBUG,
-                                format=log_format)
+            logging.basicConfig(
+                filename=os.path.join(args.log_folder, "obfuscation_log"),
+                level=logging.DEBUG,
+                format=log_format,
+            )
 
-            level, mode = (logging.DEBUG, "active") if args.verbose else (logging.INFO, "inactive")
+            level, mode = (
+                (logging.DEBUG, "active")
+                if args.verbose
+                else (logging.INFO, "inactive")
+            )
             msg = f"verbose mode is {mode}"
 
     logger.setLevel(level)
@@ -74,7 +81,11 @@ def get_txt_files(args):
     """
     ignore_hint_re = re.compile(args.ignore_hint) if args.ignore_hint else None
     if os.path.isfile(args.input_folder):
-        return [args.input_folder] if check_text_file(args.input_folder, ignore_hint_re) else []
+        return (
+            [args.input_folder]
+            if check_text_file(args.input_folder, ignore_hint_re)
+            else []
+        )
 
     all_files = []
 
@@ -95,7 +106,11 @@ def get_txt_files(args):
 
 
 def check_text_file(abs_file, ignore_hint_re):
-    if NEW_FILE_SUFFIX in abs_file or PART_SUFFIX in abs_file or abs_file.endswith(".dat"):
+    if (
+        NEW_FILE_SUFFIX in abs_file
+        or PART_SUFFIX in abs_file
+        or abs_file.endswith(".dat")
+    ):
         logger.warning(f"ignore file: {abs_file}")
         return False
 
@@ -107,8 +122,9 @@ def check_text_file(abs_file, ignore_hint_re):
                 if line:
                     # read one line, check if line is not empty
                     # stop reading after finding first valid line
-                    if BUILTIN_IGNORE_HINT_RE.search(line) \
-                            or (ignore_hint_re is not None and ignore_hint_re.search(line)):
+                    if BUILTIN_IGNORE_HINT_RE.search(line) or (
+                        ignore_hint_re is not None and ignore_hint_re.search(line)
+                    ):
                         logger.warning(f"ignore file: {abs_file}")
                     else:
                         logger.info(f"Text file: {abs_file}")
@@ -144,8 +160,8 @@ def dummy(f):
 def chunkify(items, size):
     half = size / 3
     for i in range(0, len(items), size):
-        batch = items[i:i + size]
-        if len(items[i + size: i + size * 2]) < half:
+        batch = items[i : i + size]
+        if len(items[i + size : i + size * 2]) < half:
             yield items[i:]
             raise StopIteration
         yield batch
@@ -193,19 +209,27 @@ def run_local_cmd(cmd, cmd_input=None, log_input=True, log_output=True):
     if log_input:
         logger.debug(f"IN: {cmd}")
 
-    kwargs = dict(stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                  bufsize=1, universal_newlines=True, shell=True, check=True, input=cmd_input)
+    kwargs = dict(
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        bufsize=1,
+        universal_newlines=True,
+        shell=True,
+        check=True,
+        input=cmd_input,
+    )
 
     rc = subprocess.run(cmd, **kwargs)
 
     if log_output:
-        logger.debug(f"OUT: [RC={rc.returncode}: {cmd}\nstdout={rc.stdout}\nstderr={rc.stderr}")
+        logger.debug(
+            f"OUT: [RC={rc.returncode}: {cmd}\nstdout={rc.stdout}\nstderr={rc.stderr}"
+        )
 
-    rc = RC(rc, try_decode(rc.stdout), try_decode(rc.stderr))
-    return rc
+    return RC(rc, try_decode(rc.stdout), try_decode(rc.stderr))
 
 
-def try_decode(obj: bytes, encoding='utf-8'):
+def try_decode(obj: bytes, encoding="utf-8"):
     """
     Try decode given bytes with encoding (default utf-8)
     :return: Decoded bytes to string if succeeded, else object itself
@@ -247,11 +271,10 @@ def get_extended_file(filename, size_limit, num_parts, output_folder, debug):
     if num_parts == 1 or (size and size < size_limit):
         # Single worker: no need to split
         return [filename]
-    else:
-        parts = split_file(filename, num_parts, output_folder)
-        if not debug:
-            remove_files([filename])
-        return parts
+    parts = split_file(filename, num_parts, output_folder)
+    if not debug:
+        remove_files([filename])
+    return parts
 
 
 def get_folders_difference(filename, folder):
@@ -273,15 +296,15 @@ def get_folders_difference(filename, folder):
     else:
         folder_suffix = filename.replace(common_prefix, "").replace(basename, "")
 
-    folder += "/" if not folder.endswith("/") else ''
-    new_folder_name = f"{folder}{folder_suffix}".replace("//", '/').rstrip("/")
+    folder += "/" if not folder.endswith("/") else ""
+    new_folder_name = f"{folder}{folder_suffix}".replace("//", "/").rstrip("/")
 
     # create it
     create_folder(new_folder_name)
     return new_folder_name
 
 
-def clone_file_path(filename, target_dir, suffix=''):
+def clone_file_path(filename, target_dir, suffix=""):
     """
     Create same file in different directory [Including sub dirs]
 
@@ -322,15 +345,23 @@ def split_file(path: str, num_parts: int, output_folder) -> List[str]:
     num_lines_per_file = math.ceil(get_lines_number(path) / num_parts)
     lines_per_file = max(1, num_lines_per_file)
     # in case number of lines < num parts
-    logger.debug(f"Split file={path}: parts={num_parts}, lines={num_lines_per_file}, lines_per_file= {lines_per_file}")
-    part_abs_path = clone_file_path(filename=path, target_dir=output_folder, suffix=PART_SUFFIX)
+    logger.debug(
+        f"Split file={path}: parts={num_parts}, lines={num_lines_per_file}, lines_per_file= {lines_per_file}"
+    )
+    part_abs_path = clone_file_path(
+        filename=path, target_dir=output_folder, suffix=PART_SUFFIX
+    )
 
     cmd = f"/usr/bin/split -d -l {num_lines_per_file} {path} {part_abs_path}"
     run_local_cmd(cmd=cmd)
 
     part_name = f"{os.path.basename(path)}{PART_SUFFIX}"
-    files = [os.path.join(root, f) for root, dirs, files in os.walk(output_folder) for f in files
-             if f and f.startswith(part_name)]
+    files = [
+        os.path.join(root, f)
+        for root, dirs, files in os.walk(output_folder)
+        for f in files
+        if f and f.startswith(part_name)
+    ]
 
     logger.debug(f"File={path}, files={files}")
     return files
@@ -341,7 +372,10 @@ def combine_files(files: List[str], output_file: str) -> None:
     :param files: List[str], [Sorted] list files to read sequentially
     :param output_file: str, output filename to merge files into
     """
-    cmd = " ; ".join([f"touch {output_file}"] + [f"cat {f} >> {output_file} ; rm -f {f}" for f in files])
+    cmd = " ; ".join(
+        [f"touch {output_file}"]
+        + [f"cat {f} >> {output_file} ; rm -f {f}" for f in files]
+    )
     _ = run_local_cmd(cmd=cmd)
 
 
@@ -372,7 +406,7 @@ def sort_split_file_func(x):
 
 
 def sort(x, index):
-    """ Sort function by index
+    """Sort function by index
     :param x: Item to sort
     :param index: Index to take
     """
@@ -384,7 +418,6 @@ def sort(x, index):
 
 # Custom argparse type representing a bounded int
 class IntRange:
-
     def __init__(self, imin=None, imax=None):
         self.imin = imin
         self.imax = imax
@@ -394,13 +427,17 @@ class IntRange:
             value = int(arg)
         except ValueError:
             raise self.exception()
-        if (self.imin is not None and value < self.imin) or (self.imax is not None and value > self.imax):
+        if (self.imin is not None and value < self.imin) or (
+            self.imax is not None and value > self.imax
+        ):
             raise self.exception()
         return value
 
     def exception(self):
         if self.imin is not None and self.imax is not None:
-            return argparse.ArgumentTypeError(f"Must be an integer in the range [{self.imin}, {self.imax}]")
+            return argparse.ArgumentTypeError(
+                f"Must be an integer in the range [{self.imin}, {self.imax}]"
+            )
         elif self.imin is not None:
             return argparse.ArgumentTypeError(f"Must be an integer >= {self.imin}")
         elif self.imax is not None:
@@ -425,7 +462,7 @@ class PathType:
         """
         if path:
             if os.path.isdir(path):
-                path += "" if path.endswith("/") else '/'
+                path += "" if path.endswith("/") else "/"
             if self.create and os.path.isdir(path):
                 os.makedirs(path, exist_ok=True)
             if self.verify_exist:
@@ -445,7 +482,7 @@ def hash_string(string):
 def itemgetter(x, y, type_needed):
     try:
         op = operator.getitem(x, y)
-        if type(op) == type_needed:
+        if isinstance(op, type_needed):
             return op
         return itemgetter(op, y, type_needed)
     except IndexError:

@@ -9,47 +9,57 @@ from strategy.enums import RCEnum
 from strategy.workers_pool import WorkersPool, MultiProcessPipeline
 
 
-class FileSplitters(metaclass=ABCMeta):
-
+class BaseFileSplitters(metaclass=ABCMeta):
     def __init__(self, args, name):
         self.args = args
         self.name = name
-        self.raw_files = []  # # List of files to obfuscate
+        self.raw_files = []  # List of files to obfuscate
         self._pool_function = None
 
-        self.pool_function = WorkersPool.pool_factory(self.args.debug, pool_type=self.args.pool_type)
+        self.pool_function = WorkersPool.pool_factory(
+            self.args.debug, pool_type=self.args.pool_type
+        )
         # Set args workers to be the pool's default workers number
         self.args.workers = self.args.workers or self.pool_function().workers
 
         if not self.args.output_folder:
             # make output folder - input folder
-            self.args.output_folder = self.args.input_folder if os.path.isdir(self.args.input_folder) \
+            self.args.output_folder = (
+                self.args.input_folder
+                if os.path.isdir(self.args.input_folder)
                 else os.path.dirname(self.args.input_folder)
+            )
 
     @property
     def management_pool(self):
-        return WorkersPool.pool_factory(debug=self.args.debug, pool_type=None, mgmt=True)
+        return WorkersPool.pool_factory(
+            debug=self.args.debug, pool_type=None, mgmt=True
+        )
 
     def __str__(self):
         return self.name
 
     def _print(self, src_file):
         msg = f"Obfuscate {self.name}: " + "{size}{src_file}"
-        size_unit = ''
+        size_unit = ""
         if self.args.debug:
             _, size_unit = utils.get_file_size(src_file)
-            size_unit = f'{size_unit} '
+            size_unit = f"{size_unit} "
         utils.logger.info(msg.format(size=size_unit, src_file=src_file))
 
     def run(self):
-        utils.logger.info(f"Working with pool {self.pool_function.__name__} with {self.args.workers} workers")
+        utils.logger.info(
+            f"Working with pool {self.pool_function.__name__} with {self.args.workers} workers"
+        )
         # Template
         try:
             utils.create_folder(self.args.output_folder)
             self.raw_files = utils.get_txt_files(self.args)
             self.pre_all()
             self.obfuscate()
-            utils.logger.info(f"SUCCESS: Results can be found in '{self.args.output_folder}'")
+            utils.logger.info(
+                f"SUCCESS: Results can be found in '{self.args.output_folder}'"
+            )
             rc = RCEnum.SUCCESS
 
         except utils.NoTextFilesFound as e:
@@ -65,12 +75,10 @@ class FileSplitters(metaclass=ABCMeta):
         return rc.value
 
     def pre_all(self):
-        """ Pre operations"""
-        pass
+        """Pre operations"""
 
     def post_all(self):
         """Post operations"""
-        pass
 
     def orchestrate_run(self):
         raise NotImplemented("Not Supported")
@@ -87,7 +95,7 @@ class FileSplitters(metaclass=ABCMeta):
 
     def obfuscate(self):
         """Obfuscate input files:
-         - If there's only one workers or one file: Run in single process without multiprocessing Pool
+        - If there's only one workers or one file: Run in single process without multiprocessing Pool
         """
         if not self.raw_files:
             raise utils.NoTextFilesFound(f"{self.__str__()} No files to obfuscate")
@@ -114,8 +122,7 @@ class FileSplitters(metaclass=ABCMeta):
         pass
 
 
-class ObfuscateGenericHybrid(FileSplitters):
-
+class ObfuscateGenericHybrid(BaseFileSplitters):
     def __init__(self, args, hybrid, name=None):
         super().__init__(args, name=name or "GenericHybrid")
         self.hybrid = hybrid
@@ -140,14 +147,16 @@ class ObfuscateGenericHybrid(FileSplitters):
             pool.map(utils.dummy, (o.post_all for o in self.hybrid.strategies.values()))
 
 
-class AbsHybrid(FileSplitters):
+class AbsHybrid(BaseFileSplitters):
     def __init__(self, args, name, strategies, main_strategy):
         super().__init__(args, name)
         self.default_process_num = 5
         self.pipeline = None
         self.strategies = strategies
         self.main_strategy = main_strategy
-        self.strategy_to_worker = {flag: strategy.single_obfuscate for flag, strategy in strategies.items()}
+        self.strategy_to_worker = {
+            flag: strategy.single_obfuscate for flag, strategy in strategies.items()
+        }
 
     @property
     @lru_cache(1)
@@ -177,7 +186,9 @@ class AbsHybrid(FileSplitters):
         return self.generic.post_all()
 
     def orchestrate_run(self):
-        MultiProcessPipeline(self.pipeline, self.raw_files, self.default_process_num)(ignore_results=True)
+        MultiProcessPipeline(self.pipeline, self.raw_files, self.default_process_num)(
+            ignore_results=True
+        )
 
     @property
     @lru_cache(1)
@@ -197,9 +208,13 @@ class AbsHybrid(FileSplitters):
             if future_args is None:
                 future_args = tuple()
             if move_to_main_strategy is None:
-                utils.logger.info(f"{self.hybrid.main_strategy}: ignore file {src_file}")
+                utils.logger.info(
+                    f"{self.hybrid.main_strategy}: ignore file {src_file}"
+                )
                 return None
-            return partial(self.hybrid.strategy_to_worker[move_to_main_strategy])(src_file, future_args)
+            return partial(self.hybrid.strategy_to_worker[move_to_main_strategy])(
+                src_file, future_args
+            )
 
         @staticmethod
         def obfuscate_file(obf_func):
