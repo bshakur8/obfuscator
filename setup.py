@@ -5,7 +5,7 @@ REQUIRES = ["scrubadub", "in-place"]
 
 setup(
     name="Obfuscator",
-    version="1.0",
+    version="1.1",
     url="https://github.com/bshakur8/obfuscator",
     author="Bhaa Shakur",
     author_email="bhaa.shakur@gmail.com",

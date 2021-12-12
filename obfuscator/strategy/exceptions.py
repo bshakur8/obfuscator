@@ -1,0 +1,2 @@
+class NoTextFilesFound(Exception):
+    pass

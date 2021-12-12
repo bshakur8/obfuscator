@@ -1,5 +1,5 @@
 scrubadub
 in-place
-isort[requirements_deprecated_finder,pipfile_deprecated_finder]
 black
 prospector[with_everything]
+better-exceptions

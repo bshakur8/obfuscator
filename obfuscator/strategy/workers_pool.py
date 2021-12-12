@@ -39,23 +39,16 @@ class MultiProcessPipeline:
     def __init__(self, funcs, collection, default_process_num=1):
         self.collection = collection
         # communication queues
-        self.queues = [
-            JoinableQueue(maxsize=-1, ctx=multiprocessing.get_context())
-            for _ in range(len(funcs) + 1)
-        ]
+        self.queues = [JoinableQueue(maxsize=-1, ctx=multiprocessing.get_context()) for _ in range(len(funcs) + 1)]
 
         first_func, start_size, current_size = None, 0, 0
 
         self.processes = []
         for idx, data in enumerate(funcs):
-            current_func, current_size = self.get_current_info(
-                data, default_process_num
-            )
+            current_func, current_size = self.get_current_info(data, default_process_num)
             next_func, next_size = self.get_next_info(funcs, idx, default_process_num)
 
-            assert callable(
-                current_func
-            ), f"Function '{current_func}' is not a callable"
+            assert callable(current_func), f"Function '{current_func}' is not a callable"
 
             readq, writeq = self.queues[idx], self.queues[idx + 1]
             barrier = multiprocessing.Barrier(current_size)
@@ -64,12 +57,8 @@ class MultiProcessPipeline:
 
             self.processes.append(
                 [
-                    MultiProcessPipeline.Consumer(
-                        readq, writeq, barrier, num_stops, next_func
-                    )
-                    for i, num_stops in enumerate(
-                        self.get_num_stops(current_size, next_size)
-                    )
+                    MultiProcessPipeline.Consumer(readq, writeq, barrier, num_stops, next_func)
+                    for i, num_stops in enumerate(self.get_num_stops(current_size, next_size))
                 ]
             )
 
@@ -95,7 +84,7 @@ class MultiProcessPipeline:
             next_func, next_size = None, None
         return next_func, next_size
 
-    def __call__(self, ignore_results=False, *args, **kwargs):
+    def __call__(self, *args, ignore_results=False, **kwargs):
         self.start()
         self.join(ignore_results=ignore_results)
 
@@ -128,7 +117,6 @@ class MultiProcessPipeline:
         integer, reminder = (1, 0) if y is None else (int(y / x), y % x)
         for i in range(x):
             yield integer + (0 if i else reminder)
-        raise StopIteration
 
     class Task:
         def __init__(self, func, arg, index):
@@ -160,9 +148,7 @@ class MultiProcessPipeline:
             for next_task in iter(self.readq.get, None):
                 task = next_task()
                 self.readq.task_done()
-                self.writeq.put(
-                    MultiProcessPipeline.Task(self.next_func, task.result, task.index)
-                )
+                self.writeq.put(MultiProcessPipeline.Task(self.next_func, task.result, task.index))
 
             self.readq.task_done()
             self.barrier.wait()
@@ -183,7 +169,7 @@ class NoDaemonProcess(multiprocessing.Process):
 
 class CustomMultiProcessPool(multiprocessing.pool.Pool):
     """
-    We sub-class multiprocessing.pool.Pool instead of multiprocessing.Pool
+    sub-class multiprocessing.pool.Pool instead of multiprocessing.Pool
     because the latter is only a wrapper function, not a proper class.
     """
 
@@ -228,9 +214,8 @@ class _WorkersPool:
         if pool_type is None:
             return cls.default
         pool_class = getattr(cls, pool_type, None)
-        assert pool_class, (
-            f"Unknown pool_type: {pool_type} [{type(pool_type)}]."
-            + "Supported: {}".format("\n -".join(cls.choices()))
+        assert pool_class, f"Unknown pool_type: {pool_type} [{type(pool_type)}]." + "Supported: {}".format(
+            "\n -".join(cls.choices())
         )
         return pool_class
 
@@ -246,16 +231,14 @@ class _WorkersPool:
     def futures_pool(cls, key_to_func, workers, engine):
         assert isinstance(key_to_func, dict)
         with engine(workers) as pool:
-            future_to_key = {
-                pool.submit(func): key for key, func in key_to_func.items()
-            }
+            future_to_key = {pool.submit(func): key for key, func in key_to_func.items()}
             for future in concurrent.futures.as_completed(future_to_key):
                 key = future_to_key[future]
                 try:
                     data = future.result()
                     yield key, data
-                except Exception as exc:
-                    logger.error("%r generated an exception: %s" % (key, exc))
+                except (Exception,):
+                    logger.exception(f"Generated an exception: {key}")
 
     @classmethod
     def get_default_pool_class(cls):
@@ -264,23 +247,10 @@ class _WorkersPool:
     @classmethod
     @lru_cache(1)
     def choices(cls):
-        return [
-            fn
-            for fn in cls.__dict__
-            if not fn.startswith("_")
-            and fn
-            not in (
-                "pool_factory",
-                "choices",
-                "choices_str",
-                "default",
-                "Executor",
-                "get_default_pool_class",
-            )
-        ]
+        return ["multiprocess", "thread_pool", "thread_pool_executor", "greenlets"]
 
     @classmethod
-    def serial_pool(cls, *_, **__):
+    def serial_pool(cls, *args, **kwargs):
         return WorkersPool.SerialPool()
 
     @classmethod

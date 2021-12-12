@@ -5,39 +5,54 @@ import traceback
 from collections import defaultdict
 from datetime import datetime
 from functools import partial
+from io import DEFAULT_BUFFER_SIZE
 from tempfile import mkstemp
 
-from detectors.detectors import ObfuscatorDetectors
-from detectors.scrubber import ObfuscatorScrubber
-from strategy import utils
-from strategy.abs_file_splitter import FileSplitters
+from obfuscator.detectors.detectors import ObfuscatorDetectors
+from obfuscator.detectors.scrubber import ObfuscatorScrubber
+from obfuscator.strategy import utils
+from obfuscator.strategy.base_spliter import BaseFileSplitters
+from obfuscator.strategy.exceptions import NoTextFilesFound
+from obfuscator.strategy.utils import debug, error, exception, info
 
 
-class ObfuscateSplitAndMerge(FileSplitters):
+def sort(name, index):
+    """Sort function by index
+    :param name: File name to sort
+    :param index: Index to take
+    """
+    try:
+        return int(name.split(utils.FILE_PREFIX)[index])
+    except (IndexError, ValueError):
+        return 0
+
+
+class ObfuscateSplitAndMerge(BaseFileSplitters):
     """
     Split big files and obfuscate them, and merge temp files
      - Suitable for big files with no limited disk space
     """
 
-    def __init__(self, args, name=None):
-        super().__init__(args=args, name=name or "Split&Merge")
+    NAME = "Split&Merge"
+
+    def __init__(self, args):
+        super().__init__(args=args)
         # Folder to save file splits in
         self.scrubber = None
         self._tmp_folder = None
         self.num_parts = self.args.workers
-        self.sort_func = utils.sort_split_file_func
+
+    @staticmethod
+    def sort_func(item):
+        return sort(item, -3)
 
     def pre_all(self):
         super().pre_all()
         self.customise_scrubber()
         # Create temp folder: save file splits and removed at the end
-        ts = datetime.utcnow().strftime(
-            "%Y%m%d_%H%M%S"
-        )  # format: obf_tmp_20200809_102729
-        self._tmp_folder = os.path.join(
-            self.args.output_folder, f"{utils.TMP_FOLDER_PREFIX}{ts}"
-        )
-        utils.logger.debug(f"Create splits temp folder: {self._tmp_folder}")
+        ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")  # obf_tmp_20200809_102729
+        self._tmp_folder = os.path.join(self.args.output_folder, f"{utils.TMP_FOLDER_PREFIX}{ts}")
+        debug(f"Create splits temp folder: {self._tmp_folder}")
         utils.create_folder(self._tmp_folder)
 
     def customise_scrubber(self):
@@ -47,7 +62,7 @@ class ObfuscateSplitAndMerge(FileSplitters):
 
         for detector in ObfuscatorDetectors:
             detector.filth_cls.salt = self.args.salt
-            utils.logger.debug(f"Add Detector: {detector}")
+            debug(f"Add Detector: {detector}")
             scrubber.add_detector(detector)
 
         self.scrubber = scrubber
@@ -58,11 +73,11 @@ class ObfuscateSplitAndMerge(FileSplitters):
          - Remove temporary folder
         """
         if self._tmp_folder:
-            utils.logger.debug(f"Remove temp folder: {self._tmp_folder}")
+            debug(f"Remove temp folder: {self._tmp_folder}")
             try:
                 shutil.rmtree(self._tmp_folder)
             except OSError as e:
-                utils.logger.error(f"Error: {e.filename} - {e.strerror}.")
+                error(f"Error: {e.filename} - {e.strerror}.")
 
     def pre_one(self, src_file):
         return utils.get_extended_file(
@@ -89,22 +104,20 @@ class ObfuscateSplitAndMerge(FileSplitters):
 
         # Create temp file, return fs and abs_tmp_path
         prefix = f"{os.path.basename(abs_file)}{utils.FILE_PREFIX}"
-        new_folder_name = utils.get_folders_difference(
-            filename=abs_file, folder=self._tmp_folder
-        )
+        new_folder_name = utils.get_folders_difference(filename=abs_file, folder=self._tmp_folder)
         obf_mkstemp = partial(mkstemp, dir=new_folder_name, text=True, prefix=prefix)
         tmp_fd, abs_tmp_path = obf_mkstemp(suffix=utils.NEW_FILE_SUFFIX)
         line_idx = 0
         try:
-            with open(tmp_fd, "w", buffering=utils.DEFAULT_BUFFER_SIZE) as writer, open(
-                abs_file, "r", buffering=utils.DEFAULT_BUFFER_SIZE, encoding="utf-8"
+            with open(tmp_fd, "w", buffering=DEFAULT_BUFFER_SIZE) as writer, open(
+                abs_file, "r", buffering=DEFAULT_BUFFER_SIZE, encoding="utf-8"
             ) as reader:
                 for line_idx, line in enumerate(reader):
                     # clean file and write to new_logs file
                     writer.write(self.scrubber.clean(text=line))
 
         except (Exception,):
-            utils.logger.exception(f"Exception in obfuscate_sam._obfuscate_worker")
+            exception(f"Exception in {self.__class__.__name__}")
             # remove failed temp file
             utils.remove_files([abs_tmp_path])
 
@@ -118,12 +131,12 @@ class ObfuscateSplitAndMerge(FileSplitters):
                 writer.write(f"{line}{format_exception}")
 
         finally:
-            if self.args.remove_original or utils.PART_SUFFIX in abs_file:
-                utils.logger.debug("Remove file: {}".format(abs_file))
+            if utils.PART_SUFFIX in abs_file:
+                debug("Remove file: {}".format(abs_file))
                 utils.remove_files([abs_file])
-                utils.logger.debug("Done remove file: {}".format(abs_file))
+                debug("Done remove file: {}".format(abs_file))
 
-        utils.logger.info(f"Done obfuscate '{abs_file}'")
+        info(f"Done obfuscate '{abs_file}'")
         return abs_tmp_path
 
     def _prepare_merge_files(self, obfuscated_files):
@@ -133,7 +146,7 @@ class ObfuscateSplitAndMerge(FileSplitters):
         Delete
         """
         if not obfuscated_files:
-            raise utils.NoTextFilesFound("No files to merge!")
+            raise NoTextFilesFound("No files to merge!")
 
         obfuscated_files = list(obfuscated_files)
         dict_files = defaultdict(list)
@@ -141,12 +154,8 @@ class ObfuscateSplitAndMerge(FileSplitters):
         if len(obfuscated_files) == 1:
             # move to output_folder
             obfuscated_abs_path = obfuscated_files[0]
-            orig_basename, _, _ = os.path.basename(obfuscated_abs_path).partition(
-                utils.FILE_PREFIX
-            )
-            target_dir = os.path.dirname(
-                obfuscated_abs_path.replace(self._tmp_folder, "")
-            )
+            orig_basename = os.path.basename(obfuscated_abs_path).partition(utils.FILE_PREFIX)[0]
+            target_dir = os.path.dirname(obfuscated_abs_path.replace(self._tmp_folder, ""))
             target_dir = self.args.output_folder + target_dir.strip("/")
             utils.create_folder(target_dir)
             shutil.move(obfuscated_abs_path, os.path.join(target_dir, orig_basename))
@@ -155,12 +164,8 @@ class ObfuscateSplitAndMerge(FileSplitters):
             obfuscated_files = sorted(obfuscated_files, key=self.sort_func)
 
             for obfuscated_abs_path in obfuscated_files:
-                orig_basename, _, _ = os.path.basename(obfuscated_abs_path).partition(
-                    utils.FILE_PREFIX
-                )
-                target_dir = os.path.dirname(
-                    obfuscated_abs_path.replace(self._tmp_folder, "")
-                )
+                orig_basename = os.path.basename(obfuscated_abs_path).partition(utils.FILE_PREFIX)[0]
+                target_dir = os.path.dirname(obfuscated_abs_path.replace(self._tmp_folder, ""))
                 target_dir = self.args.output_folder + target_dir
                 utils.create_folder(target_dir)
                 target_file = os.path.join(target_dir, orig_basename)
@@ -175,5 +180,5 @@ class ObfuscateSplitAndMerge(FileSplitters):
         :param one_tuple: Tuple, list files to merge into output file
         """
         output_file, list_files = one_tuple
-        utils.logger.debug(f"Merge {output_file}")
+        debug(f"Merge {output_file}")
         utils.combine_files(files=list_files, output_file=output_file)

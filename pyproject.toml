@@ -1,0 +1,21 @@
+[tool.black]
+line-length = 120
+target-version = ['py36']
+include = '\.pyi?$'
+
+
+# Pylint section
+[tool.pylint.'DESIGN']
+ignored-argument-names="args|kwargs"
+max-line-length = 120
+disable = "C0330, "
+max-args = 10
+max-locals = 15
+max-returns = 6
+max-branches = 12
+max-statements = 50
+max-parents = 7
+max-attributes = 7
+min-public-methods = 1
+max-public-methods = 20
+max-module-lines = 1000

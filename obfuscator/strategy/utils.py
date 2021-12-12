@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import uuid
 import logging
 import math
 import operator
@@ -10,11 +9,8 @@ import shutil
 import subprocess
 import time
 from collections import namedtuple
-from functools import wraps, lru_cache
-from io import DEFAULT_BUFFER_SIZE
+from functools import wraps
 from typing import List
-
-import in_place
 
 LIST_UNITS = ["bytes", "KB", "MB", "GB", "GB+"]
 FILE_PREFIX = "___"
@@ -26,42 +22,37 @@ BUILTIN_IGNORE_HINT_RE = re.compile(BUILTIN_IGNORE_HINT)
 
 # logger object
 logger = logging.getLogger("Obfuscator")
+info = logger.info
+warning = logger.warning
+debug = logger.debug
+exception = logger.exception
+error = logger.error
 
 
 def init_logger(args=None):
-    """
-    Init logger:
-     - Set streamHandler
-     - Set FileHandler
-
-    :param args: argsparse args. Uses 'log_folder' and 'verbose'
-    """
     handler = logging.StreamHandler()
     log_format = "%(asctime)s [%(levelname)-1s %(process)d %(threadName)s]  %(message)s"
     handler.setFormatter(logging.Formatter(log_format))
     logger.addHandler(handler)
-    level = logging.DEBUG
-    msg = None
 
+    log_folder = None
     if args:
-        if args.log_folder:
-            logging.basicConfig(
-                filename=os.path.join(args.log_folder, "obfuscation_log"),
-                level=logging.DEBUG,
-                format=log_format,
-            )
+        log_folder = args.log_folder
+        verbose = args.verbose
+    else:
+        verbose = True
+    log_folder = log_folder or "/tmp"
 
-            level, mode = (
-                (logging.DEBUG, "active")
-                if args.verbose
-                else (logging.INFO, "inactive")
-            )
-            msg = f"verbose mode is {mode}"
+    logging.basicConfig(
+        filename=os.path.join(log_folder, "obfuscation_log"),
+        level=logging.DEBUG,
+        format=log_format,
+    )
 
+    level, mode = (logging.DEBUG, "active") if verbose else (logging.INFO, "inactive")
     logger.setLevel(level)
-    logger.info(BUILTIN_IGNORE_HINT)
-    if msg:
-        logger.debug(msg)
+    logger.info(f"Setting ignore hint in obfuscator log file: {BUILTIN_IGNORE_HINT}")
+    logger.debug(f"Verbose mode is {mode}")
 
 
 def clone_folder(raw_files, args):
@@ -81,11 +72,7 @@ def get_txt_files(args):
     """
     ignore_hint_re = re.compile(args.ignore_hint) if args.ignore_hint else None
     if os.path.isfile(args.input_folder):
-        return (
-            [args.input_folder]
-            if check_text_file(args.input_folder, ignore_hint_re)
-            else []
-        )
+        return [args.input_folder] if check_text_file(args.input_folder, ignore_hint_re) else []
 
     all_files = []
 
@@ -106,11 +93,7 @@ def get_txt_files(args):
 
 
 def check_text_file(abs_file, ignore_hint_re):
-    if (
-        NEW_FILE_SUFFIX in abs_file
-        or PART_SUFFIX in abs_file
-        or abs_file.endswith(".dat")
-    ):
+    if NEW_FILE_SUFFIX in abs_file or PART_SUFFIX in abs_file or abs_file.endswith(".dat"):
         logger.warning(f"ignore file: {abs_file}")
         return False
 
@@ -145,25 +128,13 @@ def remove_files(list_files):
             logger.error(f"Failed to remove {f}: {e}")
 
 
-def obfuscate_in_place(src_file, scrubber):
-    # Create temp file, return fs and abs_tmp_path
-    with in_place.InPlace(name=src_file, buffering=DEFAULT_BUFFER_SIZE) as fd:
-        for idx, line in enumerate(fd, 1):
-            fd.write(scrubber.clean(text=line))
-    return src_file
-
-
-def dummy(f):
-    return f()
-
-
 def chunkify(items, size):
     half = size / 3
     for i in range(0, len(items), size):
         batch = items[i : i + size]
         if len(items[i + size : i + size * 2]) < half:
             yield items[i:]
-            raise StopIteration
+            return
         yield batch
 
 
@@ -215,16 +186,13 @@ def run_local_cmd(cmd, cmd_input=None, log_input=True, log_output=True):
         bufsize=1,
         universal_newlines=True,
         shell=True,
-        check=True,
         input=cmd_input,
     )
 
-    rc = subprocess.run(cmd, **kwargs)
+    rc = subprocess.run(cmd, check=True, **kwargs)
 
     if log_output:
-        logger.debug(
-            f"OUT: [RC={rc.returncode}: {cmd}\nstdout={rc.stdout}\nstderr={rc.stderr}"
-        )
+        logger.debug(f"OUT: [RC={rc.returncode}: {cmd}\nstdout={rc.stdout}\nstderr={rc.stderr}")
 
     return RC(rc, try_decode(rc.stdout), try_decode(rc.stderr))
 
@@ -345,12 +313,8 @@ def split_file(path: str, num_parts: int, output_folder) -> List[str]:
     num_lines_per_file = math.ceil(get_lines_number(path) / num_parts)
     lines_per_file = max(1, num_lines_per_file)
     # in case number of lines < num parts
-    logger.debug(
-        f"Split file={path}: parts={num_parts}, lines={num_lines_per_file}, lines_per_file= {lines_per_file}"
-    )
-    part_abs_path = clone_file_path(
-        filename=path, target_dir=output_folder, suffix=PART_SUFFIX
-    )
+    logger.debug(f"Split file={path}: parts={num_parts}, lines={num_lines_per_file}, lines_per_file= {lines_per_file}")
+    part_abs_path = clone_file_path(filename=path, target_dir=output_folder, suffix=PART_SUFFIX)
 
     cmd = f"/usr/bin/split -d -l {num_lines_per_file} {path} {part_abs_path}"
     run_local_cmd(cmd=cmd)
@@ -372,10 +336,7 @@ def combine_files(files: List[str], output_file: str) -> None:
     :param files: List[str], [Sorted] list files to read sequentially
     :param output_file: str, output filename to merge files into
     """
-    cmd = " ; ".join(
-        [f"touch {output_file}"]
-        + [f"cat {f} >> {output_file} ; rm -f {f}" for f in files]
-    )
+    cmd = " ; ".join([f"touch {output_file}"] + [f"cat {f} >> {output_file} ; rm -f {f}" for f in files])
     _ = run_local_cmd(cmd=cmd)
 
 
@@ -397,25 +358,6 @@ def measure_time(func):
     return wrapper
 
 
-def sort_func(x):
-    return sort(x, -1)
-
-
-def sort_split_file_func(x):
-    return sort(x, -3)
-
-
-def sort(x, index):
-    """Sort function by index
-    :param x: Item to sort
-    :param index: Index to take
-    """
-    try:
-        return int(x.split(FILE_PREFIX)[index])
-    except (IndexError, ValueError):
-        return 0
-
-
 # Custom argparse type representing a bounded int
 class IntRange:
     def __init__(self, imin=None, imax=None):
@@ -427,29 +369,22 @@ class IntRange:
             value = int(arg)
         except ValueError:
             raise self.exception()
-        if (self.imin is not None and value < self.imin) or (
-            self.imax is not None and value > self.imax
-        ):
+        if (self.imin is not None and value < self.imin) or (self.imax is not None and value > self.imax):
             raise self.exception()
         return value
 
     def exception(self):
         if self.imin is not None and self.imax is not None:
-            return argparse.ArgumentTypeError(
-                f"Must be an integer in the range [{self.imin}, {self.imax}]"
-            )
-        elif self.imin is not None:
+            return argparse.ArgumentTypeError(f"Must be an integer in the range [{self.imin}, {self.imax}]")
+        if self.imin is not None:
             return argparse.ArgumentTypeError(f"Must be an integer >= {self.imin}")
-        elif self.imax is not None:
+        if self.imax is not None:
             return argparse.ArgumentTypeError(f"Must be an integer <= {self.imax}")
-        else:
-            return argparse.ArgumentTypeError("Must be an integer")
+        return argparse.ArgumentTypeError("Must be an integer")
 
 
 class PathType:
-    """
-    Path type that gets a path and checks if it really exist
-    """
+    """Path type that gets a path and checks if it really exist"""
 
     def __init__(self, verify_exist=False, create=False):
         self.verify_exist = verify_exist
@@ -474,11 +409,6 @@ class PathType:
         raise argparse.ArgumentTypeError(f"path is not found: {path}")
 
 
-@lru_cache(100_000)
-def hash_string(string):
-    return str(uuid.uuid5(uuid.NAMESPACE_OID, string))[:8]
-
-
 def itemgetter(x, y, type_needed):
     try:
         op = operator.getitem(x, y)
@@ -487,7 +417,3 @@ def itemgetter(x, y, type_needed):
         return itemgetter(op, y, type_needed)
     except IndexError:
         return x
-
-
-class NoTextFilesFound(Exception):
-    pass

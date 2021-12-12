@@ -1,6 +1,6 @@
 import unittest
 
-from detectors.detectors import FilesDirFilth, IPv4Filth, MyCredentialFilth
+from obfuscator.detectors.detectors import FilesDirFilth, IPv4Filth, MyCredentialFilth
 
 
 class TestRegex(unittest.TestCase):
@@ -124,7 +124,5 @@ class TestRegex(unittest.TestCase):
         self.assertEqual(
             len(dict_errs),
             0,
-            "Found errors: {}".format(
-                "\n".join([f"{v}" for k, v in dict_errs.items()])
-            ),
+            "Found errors: {}".format("\n".join([f"{v}" for k, v in dict_errs.items()])),
         )

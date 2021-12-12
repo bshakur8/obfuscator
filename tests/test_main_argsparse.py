@@ -1,43 +1,39 @@
 import unittest
 
-from main import get_args_parser
-from strategy.enums import StrategyTypes
+from obfuscator.main import get_args_parser, StrategyTypes
 
 utils_kwargs = {"log_to_debug": False}
 
-FOUND_FOLDER = "/tmp"
 DUMMY_SALT = "1234"
+TEMP_DIR = "/tmp/"
 
 
 class TestMainArgs(unittest.TestCase):
-    MINIMUM_GOOD_CMD = (
-        f"-i {FOUND_FOLDER} -o {FOUND_FOLDER} -s {DUMMY_SALT}"  # DO NOT CHANGE
-    )
+    MINIMUM_GOOD_CMD = f"-i {TEMP_DIR} -o {TEMP_DIR} -s {DUMMY_SALT}"  # DO NOT CHANGE
     parser = get_args_parser()
 
     def test_args_defaults(self):
         kwargs = {
-            "input_folder": "/tmp/",
-            "output_folder": "/tmp/",
+            "input_folder": TEMP_DIR,
+            "output_folder": TEMP_DIR,
             "salt": DUMMY_SALT,
-            "log_folder": "/tmp/",
+            "log_folder": TEMP_DIR,
             "verbose": False,
             "workers": None,
-            "strategy": StrategyTypes.HYBRID.value,
+            "strategy": StrategyTypes.ripgrep.name,
             "ignore_hint": None,
-            "measure_time": False,
+            "measure_time": True,
             "pool_type": None,
-            "remove_original": False,
         }
-        args_cmd = f"{self.MINIMUM_GOOD_CMD} --log-folder /tmp"
+        args_cmd = f"{self.MINIMUM_GOOD_CMD} --log-folder {TEMP_DIR}"
         parsed_args = self.parser.parse_args(args_cmd.split(" "))
 
         list_err = []
         for arg, expected_res in kwargs.items():
-            if getattr(parsed_args, arg) != expected_res:
+            arg_val = getattr(parsed_args, arg)
+            if arg_val != expected_res:
                 list_err.append(
-                    f"=======> Failed with args: {arg}-> expected: '{expected_res}' <=======."
-                    f"Case: {args_cmd}"
+                    f"=======> Failed with args: {arg}-> expected: '{expected_res}' <=======." f"Case: {args_cmd}"
                 )
 
         if list_err:
@@ -47,7 +43,7 @@ class TestMainArgs(unittest.TestCase):
         list_err = []
         for args in [
             "",  # empty
-            "-i /tmp -o /tmp -log /_stam_folder_",  # -log is not found
+            f"-i {TEMP_DIR} -o {TEMP_DIR} -log /_stam_folder_",  # -log is not found
             f"{self.MINIMUM_GOOD_CMD} -V",  # -V is not supported
             f"{self.MINIMUM_GOOD_CMD} --workers 8.5",  # invalid workers type
             f"{self.MINIMUM_GOOD_CMD} --workers -4",  # invalid workers type
@@ -68,8 +64,8 @@ class TestMainArgs(unittest.TestCase):
 
     def test_folder_not_exist(self):
         for cmd in [
-            "-i /_no_way_this_folder_exist -o /out --salt 120 --log_folder /tmp",
-            "-i /tmp -o /out --salt 120 --log_folder /__no_way_this_folder_exist",
+            f"-i /_no_way_this_folder_exist -o /out --salt 120 --log_folder {TEMP_DIR}",
+            f"-i {TEMP_DIR} -o /out --salt 120 --log_folder /__no_way_this_folder_exist",
         ]:
             try:
                 _ = self.parser.parse_args(cmd.split(" "))
