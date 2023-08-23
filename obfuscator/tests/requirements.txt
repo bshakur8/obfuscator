@@ -1,0 +1,3 @@
+black
+prospector[with_everything]
+better-exceptions

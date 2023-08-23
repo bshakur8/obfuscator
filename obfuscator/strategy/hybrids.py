@@ -1,15 +1,14 @@
-from obfuscator.strategy.base_spliter import AbsHybrid
-from obfuscator.strategy.low_level import ObfuscateLowLevel
-from obfuscator.strategy.split_and_merge import ObfuscateSplitAndMerge
-from obfuscator.strategy.split_in_place import ObfuscateSplitInPlace
+from .abs_file_splitter import AbsHybrid
+from .low_level import ObfuscateLowLevel
+from .split_and_merge import ObfuscateSplitAndMerge
+from .split_in_place import ObfuscateSplitInPlace
 
 
 class ObfuscateHybrid(AbsHybrid):
-    NAME = "HybridLowLevelSplit"
-
-    def __init__(self, args):
+    def __init__(self, args, name: str = "HybridLowLevelSplit"):
         strategies = {True: ObfuscateLowLevel(args), False: ObfuscateSplitInPlace(args)}
-        super().__init__(args, strategies=strategies, main_strategy=strategies[True])
+
+        super().__init__(args, name=name, strategies=strategies, main_strategy=strategies[True])
 
         self.pipeline = [
             (self.main_strategy.orchestrate_iterator, 5),
@@ -19,19 +18,10 @@ class ObfuscateHybrid(AbsHybrid):
 
 
 class ObfuscateHybridSplit(AbsHybrid):
-    NAME = "HybridSplits"
+    def __init__(self, args, name: str = "HybridSplits"):
+        strategies = {True: ObfuscateSplitAndMerge(args), False: ObfuscateSplitInPlace(args)}
 
-    def __init__(self, args):
-        strategies = {
-            True: ObfuscateSplitAndMerge(args),
-            False: ObfuscateSplitInPlace(args),
-        }
-
-        super().__init__(
-            args,
-            strategies=strategies,
-            main_strategy=strategies[True],
-        )
+        super().__init__(args, name=name, strategies=strategies, main_strategy=strategies[True])
 
         self.pipeline = [
             (self.main_strategy.orchestrate_iterator, 1),

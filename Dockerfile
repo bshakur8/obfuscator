@@ -1,5 +1,4 @@
-FROM python:3.6-alpine
-MAINTAINER Bhaa Shakur
+FROM python:3.11-alpine
 
 ENV PYTHONUNBUFFERED 1
 ENV PYTHONPATH "${PYTHONPATH}:/usr/src/app/"

@@ -4,11 +4,10 @@ import random
 from abc import ABC, abstractmethod
 from functools import partial, lru_cache
 
-from obfuscator.strategy.enums import RCEnum
-from obfuscator.strategy.exceptions import NoTextFilesFound
-from obfuscator.strategy import utils
-from obfuscator.strategy.utils import info, debug, warning, exception
-from obfuscator.strategy.workers_pool import WorkersPool, MultiProcessPipeline
+from ..lib.enums import RCEnum
+from ..lib.exceptions import NoTextFilesFoundError
+from ..lib import utils
+from ..lib.workers_pool import WorkersPool, MultiProcessPipeline
 
 
 def dummy(f):
@@ -27,7 +26,7 @@ class BaseFileSplitters(ABC):
 
         self.raw_files = []  # List of files to obfuscate
 
-        self.pool_function = WorkersPool.pool_factory(debug=self.args.debug, pool_type=self.args.pool_type)
+        self.pool_function = WorkersPool.pool_factory(serially=self.args.serially, pool_type=self.args.pool_type)
         # Set args workers to be the pool's default workers number
         self.args.workers = self.args.workers or self.pool_function().workers
 
@@ -41,7 +40,7 @@ class BaseFileSplitters(ABC):
 
     @property
     def management_pool(self):
-        return WorkersPool.pool_factory(debug=self.args.debug, pool_type=None, mgmt=True)
+        return WorkersPool.pool_factory(serially=self.args.serially, pool_type=None, mgmt=True)
 
     def __str__(self):
         return self.NAME
@@ -49,29 +48,29 @@ class BaseFileSplitters(ABC):
     def _print(self, src_file):
         msg = f"Obfuscate {self}: " + "{size}{src_file}"
         size_unit = ""
-        if self.args.debug:
+        if self.args.serially:
             _, size_unit = utils.get_file_size(src_file)
             size_unit = f"{size_unit} "
-        info(msg.format(size=size_unit, src_file=src_file))
+        utils.logger.info(msg.format(size=size_unit, src_file=src_file))
 
     def run(self):
-        info(f"Working with pool {self.pool_function.__name__} with {self.args.workers} workers")
+        utils.logger.info(f"Working with pool {self.pool_function.__name__} with {self.args.workers} workers")
         # Template
         try:
             utils.create_folder(self.args.output_folder)
-            self.raw_files = utils.get_txt_files(self.args)
+            self.raw_files = utils.get_text_files(self.args)
             self.pre_all()
             self.obfuscate()
-            info(f"SUCCESS: Results can be found in '{self.args.output_folder}'")
+            utils.logger.info(f"SUCCESS: Results can be found in '{self.args.output_folder}'")
             rc = RCEnum.SUCCESS
 
-        except NoTextFilesFound as e:
-            warning(str(e))
+        except NoTextFilesFoundError as e:
+            utils.logger.warning(str(e))
             rc = RCEnum.IGNORED
 
-        except (BaseException,):
+        except (Exception,):
             # BaseException: to catch also KeyboardInterrupt
-            exception(f"FAILED")
+            utils.logger.exception("FAILED!")
             rc = RCEnum.FAILURE
         finally:
             self.post_all()
@@ -84,31 +83,32 @@ class BaseFileSplitters(ABC):
         """Post operations"""
 
     def orchestrate_run(self):
-        raise NotImplemented("Not Supported")
+        raise NotImplementedError("Not Supported")
 
-    def orchestrate_iterator(self, src_file, *args, **kwargs):
+    def orchestrate_iterator(self, src_file, *_, **__):
         return src_file, random.choice((True, False)), None
 
     def single_obfuscate(self, abs_file, *args, **kwargs):
         files_to_obfuscate = self.pre_one(abs_file)
         with self.pool_function(len(files_to_obfuscate)) as pool:
             obfuscated_files = self.obfuscate_all(pool, files_to_obfuscate, *args)
-            self.post_one(pool, obfuscated_files)
-        debug(f"Done obfuscate '{abs_file}'")
+            self.post_one(pool=pool, obfuscated_files=obfuscated_files)
+        utils.logger.debug(f"Done obfuscate '{abs_file}'")
 
     def obfuscate(self):
         """Obfuscate input files:
-        - If there's only one workers or one file: Run in single process without multiprocessing Pool
+
+        If there's only one worker or one file: Run in single process without multiprocessing Pool
         """
         if not self.raw_files:
-            raise NoTextFilesFound(f"{self.__str__()} No files to obfuscate")
+            raise NoTextFilesFoundError(f"{self} No files to obfuscate")
 
         with self.pool_function(self.args.workers) as pool:
             for src_file in self.raw_files:
                 files_to_obfuscate = self.pre_one(src_file)
                 obfuscated_files = self.obfuscate_all(pool, files_to_obfuscate)
-                self.post_one(pool, obfuscated_files)
-                debug(f"Done obfuscate '{src_file}'")
+                self.post_one(pool=pool, obfuscated_files=obfuscated_files)
+                utils.logger.debug(f"Done obfuscate '{src_file}'")
 
     def obfuscate_all(self, pool, files_to_obfuscate, *args):
         # If 1 worker or one file to handle: run single process
@@ -122,8 +122,8 @@ class BaseFileSplitters(ABC):
     def obfuscate_one(self, *args, **kwargs):
         raise NotImplementedError()
 
-    def post_one(self, *args, **kwargs):
-        return
+    def post_one(self, *_, **__):
+        return None
 
 
 class ObfuscateGenericHybrid(BaseFileSplitters):
@@ -208,7 +208,7 @@ class AbsHybrid(BaseFileSplitters, ABC):
             future_args = future_args or tuple()
 
             if move_to_main_strategy is None:
-                info(f"{self.hybrid.main_strategy}: ignore file {src_file}")
+                utils.logger.info(f"{self.hybrid.main_strategy}: ignore file {src_file}")
                 return None
             return partial(self.hybrid.strategy_to_worker[move_to_main_strategy])(src_file, future_args)
 
