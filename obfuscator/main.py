@@ -1,39 +1,52 @@
 #!/usr/bin/env python3
 import argparse
 import sys
-from enum import Enum
 
-import better_exceptions
+from lib import utils
+from lib.enums import StrategyTypesEnum
+from lib.workers_pool import WorkersPool
+from strategy.hybrids import ObfuscateHybrid, ObfuscateHybridSplit
+from strategy.low_level import ObfuscateLowLevel, ObfuscateUsingRipGrep
+from strategy.split_and_merge import ObfuscateSplitAndMerge
+from strategy.split_in_place import ObfuscateInplace, ObfuscateSplitInPlace
 
-from obfuscator.strategy.hybrids import ObfuscateHybrid, ObfuscateHybridSplit
-from obfuscator.strategy.low_level import ObfuscateLowLevel, ObfuscateUsingRipGrep
-from obfuscator.strategy.split_and_merge import ObfuscateSplitAndMerge
-from obfuscator.strategy.split_in_place import ObfuscateInplace, ObfuscateSplitInPlace
-from obfuscator.strategy import utils
-from obfuscator.strategy.workers_pool import WorkersPool
+OBFUSCATION_METHODS_FACTORY = {
+    StrategyTypesEnum.IN_PLACE: ObfuscateInplace,
+    StrategyTypesEnum.SAM: ObfuscateSplitAndMerge,
+    StrategyTypesEnum.SIP: ObfuscateSplitInPlace,
+    StrategyTypesEnum.LOW_LEVEL: ObfuscateLowLevel,
+    StrategyTypesEnum.HYBRID: ObfuscateHybrid,
+    StrategyTypesEnum.HYBRID_SPLIT: ObfuscateHybridSplit,
+    StrategyTypesEnum.RIPGREP: ObfuscateUsingRipGrep,
+}
 
-better_exceptions.hook()
+SIZE_TO_SPLIT_IN_BYTES = 5 * 1024 * 1024  # 5 MB
 
 
-class StrategyTypes(Enum):
-    in_place = ObfuscateInplace
-    split_merge = ObfuscateSplitAndMerge
-    split_in_place = ObfuscateSplitInPlace
-    low_level = ObfuscateLowLevel
-    hybrid = ObfuscateHybrid
-    hybrid_split = ObfuscateHybridSplit
-    ripgrep = ObfuscateUsingRipGrep
+class ObfuscateManager:
+    """obfuscator facade"""
 
-    @classmethod
-    def names(cls):
-        return [str(n) for n in cls.__members__]
+    def __init__(self, args):
+        utils.init_logger(args)
+        utils.logger.debug(f"args: {args.__dict__}")
+        strategy_obj = OBFUSCATION_METHODS_FACTORY[StrategyTypesEnum(args.strategy)](args=args)
+        utils.logger.info(strategy_obj)
+
+        self._strategy = strategy_obj.run
+
+        if args.measure_time:
+            self._strategy = utils.measure_time(self._strategy)
+
+    def run(self):
+        """Obfuscation start point"""
+        return self._strategy()
 
 
 def get_args_parser(test=False):
-    thread_pool_choices = WorkersPool.choices()
+    thread_pool_choices = [p.__name__ for p in WorkersPool.choices()]
     default_pool = WorkersPool.get_default_pool_class().__name__
 
-    parser = argparse.ArgumentParser(description="Text files src")
+    parser = argparse.ArgumentParser(description="Obfuscator arguments")
     parser.add_argument(
         "-s",
         "--salt",
@@ -41,7 +54,7 @@ def get_args_parser(test=False):
         type=str,
         required=False,
         default="1234",
-        help="Salt for proper identification",
+        help="Cluster salt number for a proper identification",
     )
     parser.add_argument(
         "-i",
@@ -49,7 +62,7 @@ def get_args_parser(test=False):
         dest="input_folder",
         type=utils.PathType(verify_exist=True, create=False),
         required=True,
-        help="Input folder of file to obfuscate.",
+        help="Input folder of file to obfuscate",
     )
     parser.add_argument(
         "-o",
@@ -57,7 +70,7 @@ def get_args_parser(test=False):
         dest="output_folder",
         type=utils.PathType(verify_exist=False, create=False),
         required=False,
-        help="Output folder to save obfuscated files. When false, it will use input folder instead.",
+        help="Output folder to save obfuscated files",
     )
     parser.add_argument(
         "-w",
@@ -71,10 +84,10 @@ def get_args_parser(test=False):
     parser.add_argument(
         "--strategy",
         dest="strategy",
-        choices=StrategyTypes.names(),
+        choices=StrategyTypesEnum.names(),
         type=str,
         required=False,
-        default=StrategyTypes.ripgrep.name,
+        default=StrategyTypesEnum.HYBRID.value,
         help="Strategy to run",
     )
     parser.add_argument(
@@ -83,8 +96,16 @@ def get_args_parser(test=False):
         dest="min_split_size_in_bytes",
         type=utils.IntRange(imin=1),
         required=False,
-        default=5 * 1024 ** 2,
+        default=SIZE_TO_SPLIT_IN_BYTES,
         help="Minimum file size to split, in bytes",
+    )
+    parser.add_argument(
+        "-rm",
+        "--remove-original",
+        dest="remove_original",
+        action="store_true",
+        required=False,
+        help="Remove original file after obfuscation",
     )
     parser.add_argument(
         "-log",
@@ -95,11 +116,7 @@ def get_args_parser(test=False):
         help="Log file folder",
     )
     parser.add_argument(
-        "--ignore-hint",
-        dest="ignore_hint",
-        type=str,
-        required=False,
-        help="Ignore file hint regex: Checks first line",
+        "--ignore-hint", dest="ignore_hint", type=str, required=False, help="Ignore file hint regex: Checks first line"
     )
     parser.add_argument(
         "-t",
@@ -136,45 +153,32 @@ def get_args_parser(test=False):
         help="Explain what is being done",
     )
     parser.add_argument(
+        "--serially",
+        dest="serially",
+        default=False,
+        required=False,
+        action="store_true",
+        help="Serial mode: no parallel obfuscation",
+    )
+    parser.add_argument(
         "--debug",
         dest="debug",
         default=False,
         required=False,
         action="store_true",
-        help="Debug mode: no parallel obfuscation",
+        help="Debug mode: Add debug prints",
     )
-    parser.add_argument(
-        "--replacer",
-        default="sed -i",
-        required=False,
-        help="sed argument: sed -i, perl -pi.bak -e",
-    )
-    parser.add_argument(
-        "--searcher",
-        default="/home/bhaa/github/obfuscator/obfuscator/rg -ioe",
-        required=False,
-        help="grep argument: grep -Ewo, grep -Pwo",
-    )
+    parser.add_argument("--replacer", default="sed -i", required=False, help="sed argument: sed -i, perl -pi.bak -e")
+    parser.add_argument("--searcher", default="rg -ioe", required=False, help="grep argument: grep -Ewo, grep -Pwo")
     parser.add_argument("--sorter", default="sort -u", required=False, help="sort argument: sort -u")
-    parser.add_argument(
-        "--ripgrep-path",
-        default=None,
-        required=False,
-        help="path to ripgrep. Default use default rg based on OS type",
-    )
+    parser.add_argument("--ripgrep-path", default=None, required=False, help="path to ripgrep. Default use default rg")
     return parser
 
 
 def main():
     parser = get_args_parser()
     args = parser.parse_args()
-    utils.init_logger(args)
-    utils.logger.debug(f"args: {args.__dict__}")
-    strategy_obj = StrategyTypes[args.strategy].value(args=args)
-    utils.logger.info(f"Using strategy: {strategy_obj}")
-
-    strategy = utils.measure_time(strategy_obj.run) if args.measure_time else strategy_obj.run
-    return strategy()
+    return ObfuscateManager(args).run()
 
 
 if __name__ == "__main__":

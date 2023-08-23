@@ -1,5 +1,2 @@
 scrubadub
 in-place
-black
-prospector[with_everything]
-better-exceptions

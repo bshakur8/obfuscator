@@ -1,0 +1,178 @@
+output-format: grouped
+
+strictness: medium
+doc-warnings: false
+member-warnings: false
+inherits:
+  - strictness_medium
+  - full_pep8
+ignore-paths:
+  - venv
+ignore-patterns:
+  - (^|/)skip(this)?(/|$)
+autodetect: false
+max-line-length: 120
+
+bandit:
+  run: true
+  options:
+    config: pyproject.toml
+
+mccabe:
+  run: true
+  options:
+    max-complexity: 15
+
+pycodestyle:
+  full: true
+  disable:
+    - E116  # unexpected indentation for comments
+
+pydocstyle:
+  run: true
+  disable:
+    # pep257 convention plus a couple extra ignores
+    - D104  # Missing docstring in public package
+    - D105  # Missing docstring in magic method
+    - D106  # Missing docstring in public nested class
+    - D107  # Missing docstring in __init__
+    - D203  # 1 blank line required before class docstring
+    - D213  # Multi-line docstring summary should start at the second line
+    - D215  # Section underline is over-indented
+    - D404  # First word of the docstring should not be This
+    - D405  # Section name should be properly capitalized
+    - D406  # Section name should end with a newline
+    - D407  # Missing dashed underline after section
+    - D408  # Section underline should be in the line following the section’s name
+    - D409  # Section underline should match the length of its name
+    - D410  # Missing blank line after section
+    - D411  # Missing blank line before section
+    - D413  # Missing blank line after last section
+    - D415  # First line should end with a period, question mark, or exclamation point
+    - D416  # Section name should end with a colon
+    - D417  # Missing argument descriptions in the docstring
+
+# pyflakes:
+#   disable:
+
+pylint:
+  run: true
+  disable:
+    # when running in ci we won't have all dependencies installed
+    - import-error
+    # check=False is the default; you should know that
+    - subprocess-run-check
+    # I would have like to use this one but pylint complains about valid
+    # assignments
+    - unsupported-assignment-operation
+    # fstring interpolation in logging is more readable
+    - logging-fstring-interpolation
+    # encoding in open defaults to utf-8; that is known
+    - unspecified-encoding
+    # inappropriately not using dict.items() is not a concern for us
+    - consider-using-dict-items
+    # to be enabled... ...someday
+    - missing-function-docstring
+    - missing-module-docstring
+    - raise-missing-from
+    # these two prevent us from using python 3.10+ style type annotations
+    # e.g. `list[str] | None`. Can be removed when pylint is updated
+    - unsubscriptable-object
+    - unsupported-binary-operation
+
+    # other things to potentially disable
+    #- bad-builtin
+    #- too-few-public-methods
+    #- print-statement,
+    #- parameter-unpacking,
+    #- unpacking-in-except,
+    #- old-raise-syntax,
+    #- backtick,
+    #- long-suffix,
+    #- old-ne-operator,
+    #- old-octal-literal,
+    #- import-star-module-level,
+    #- non-ascii-bytes-literal,
+    #- raw-checker-failed,
+    #- bad-inline-option,
+    #- locally-disabled,
+    #- file-ignored,
+    #- suppressed-message,
+    #- useless-suppression,
+    #- deprecated-pragma,
+    #- use-symbolic-message-instead,
+    #- apply-builtin,
+    #- basestring-builtin,
+    #- buffer-builtin,
+    #- cmp-builtin,
+    #- coerce-builtin,
+    #- execfile-builtin,
+    #- file-builtin,
+    #- long-builtin,
+    #- raw_input-builtin,
+    #- reduce-builtin,
+    #- standarderror-builtin,
+    #- unicode-builtin,
+    #- xrange-builtin,
+    #- coerce-method,
+    #- delslice-method,
+    #- getslice-method,
+    #- setslice-method,
+    #- no-absolute-import,
+    #- old-division,
+    #- dict-iter-method,
+    #- dict-view-method,
+    #- next-method-called,
+    #- metaclass-assignment,
+    #- indexing-exception,
+    #- raising-string,
+    #- reload-builtin,
+    #- oct-method,
+    #- hex-method,
+    #- nonzero-method,
+    #- cmp-method,
+    #- input-builtin,
+    #- round-builtin,
+    #- intern-builtin,
+    #- unichr-builtin,
+    #- map-builtin-not-iterating,
+    #- zip-builtin-not-iterating,
+    #- range-builtin-not-iterating,
+    #- filter-builtin-not-iterating,
+    #- using-cmp-argument,
+    #- eq-without-hash,
+    #- div-method,
+    #- idiv-method,
+    #- rdiv-method,
+    #- exception-message-attribute,
+    #- invalid-str-codec,
+    #- sys-max-int,
+    #- bad-python3-import,
+    #- deprecated-string-function,
+    #- deprecated-str-translate-call,
+    #- deprecated-itertools-function,
+    #- deprecated-types-field,
+    #- next-method-defined,
+    #- dict-items-not-iterating,
+    #- dict-keys-not-iterating,
+    #- dict-values-not-iterating,
+    #- deprecated-operator-function,
+    #- deprecated-urllib-function,
+    #- xreadlines-attribute,
+    #- deprecated-sys-function,
+    #- exception-escape,
+    #- comprehension-escape,
+
+
+  options:
+    max-args: 10
+    max-locals: 25
+    max-branches: 20
+    contextmanager-decorators: contextlib.contextmanager,contextlib.asynccontextmanager
+    logging-format-style: old
+
+mypy:
+  run: false
+  options:
+    ignore-missing-imports: true
+    follow-imports: skip

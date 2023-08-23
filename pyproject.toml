@@ -1,6 +1,33 @@
+[project]
+name = "Obfuscator"
+target-version = "py311"
+line-length = 120
+license = {file = "LICENSE.txt"}
+
+maintainers = [
+    {name = "Bhaa Shakur", email = "bhaa.shakur@gmail.com"},
+]
+
+dependencies = [
+    "scrubadub",
+    "in-place",
+    "black",
+    "prospector[with_everything]",
+]
+
+readme = "README.rst"
+
+[project.urls]
+homepage = ""
+documentation = ""
+source = "https://github.com/bshakur8/obfuscator"
+download = "https://github.com/bshakur8/obfuscator/releases"
+tracker = "https://github.com/bshakur8/obfuscator/issues"
+
+
 [tool.black]
 line-length = 120
-target-version = ['py36']
+target-version = ['py36', 'py37', 'py38', 'py311']
 include = '\.pyi?$'
 
 
@@ -8,7 +35,7 @@ include = '\.pyi?$'
 [tool.pylint.'DESIGN']
 ignored-argument-names="args|kwargs"
 max-line-length = 120
-disable = "C0330, "
+disable = "C0330, W1203"
 max-args = 10
 max-locals = 15
 max-returns = 6
@@ -19,3 +46,9 @@ max-attributes = 7
 min-public-methods = 1
 max-public-methods = 20
 max-module-lines = 1000
+
+[tool.ruff.mccabe]
+max-complexity = 15
+
+[tool.bandit.try_except_pass]
+  checked_typed_exception = "False"
